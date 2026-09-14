@@ -19,10 +19,8 @@ publish_mode: simple
 media_folder: content/05_Примеры
 public_folder: /05_Примеры
 
-commit_messages:
-  create: 'Правка базы: новая заметка «{{slug}}»'
-  update: 'Правка базы: заметка «{{slug}}»'
-  delete: 'Правка базы: удалена заметка «{{slug}}»'
+# Сообщения коммитов задаются в настройках самого CMS (опция commit_messages
+# поддерживается Decap CMS, но не Sveltia — она игнорируется и даёт предупреждение)
 
 collections:
   - name: errors-spec
