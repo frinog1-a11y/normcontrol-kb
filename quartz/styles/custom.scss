@@ -263,3 +263,30 @@ th {
   background: var(--lightgray);
 }
 
+/* ===== Кнопки правки на GitHub ===== */
+.edit-on-github {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--lightgray);
+}
+
+.edit-on-github a {
+  font-size: 0.85rem;
+  color: var(--gray);
+  border: 1px solid var(--lightgray);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  background: var(--light);
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.edit-on-github a:hover {
+  color: var(--tertiary);
+  border-color: var(--tertiary);
+}
+
