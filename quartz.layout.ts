@@ -9,6 +9,7 @@ export const sharedPageComponents: SharedLayout = {
   footer: Component.Footer({
     links: {
       "Репозиторий базы": "https://github.com/frinog1-a11y/normcontrol-kb",
+      "Редактор базы": "https://frinog1-a11y.github.io/normcontrol-kb/static/admin/",
       Quartz: "https://quartz.jzhao.xyz",
     },
   }),

@@ -1,0 +1,145 @@
+# ==============================================================
+# Простой редактор базы (Sveltia CMS) — /static/admin/config.yml
+# Подписи полей на русском, чтобы не нужно было знать Git.
+# ==============================================================
+
+backend:
+  name: github
+  repo: frinog1-a11y/normcontrol-kb
+  branch: main
+
+app_title: Редактор базы нормоконтролёра
+site_url: https://frinog1-a11y.github.io/normcontrol-kb/
+
+logo:
+  src: https://frinog1-a11y.github.io/normcontrol-kb/static/icon.png
+  show_in_header: true
+
+publish_mode: simple
+media_folder: content/05_Примеры
+public_folder: /05_Примеры
+
+commit_messages:
+  create: 'Правка базы: новая заметка «{{slug}}»'
+  update: 'Правка базы: заметка «{{slug}}»'
+  delete: 'Правка базы: удалена заметка «{{slug}}»'
+
+collections:
+  - name: errors-spec
+    label: 'Ошибки: Спецификация'
+    label_singular: 'Ошибка по спецификации'
+    folder: content/02_Ошибки/Спецификация
+    create: true
+    extension: md
+    format: frontmatter
+    fields:
+      - { name: title, label: 'Название ошибки', widget: string, hint: 'Коротко: что именно не так' }
+      - { name: description, label: 'Краткое описание', widget: text, required: false, hint: 'Одно предложение — попадает в поиск' }
+      - { name: теги, label: 'Теги', widget: list, required: false, hint: 'Например: спецификация, частая_ошибка' }
+      - { name: body, label: 'Текст заметки', widget: markdown, hint: 'Ссылка: [[Имя_заметки]]. Картинка: ![[05_Примеры/Плохо/файл.png]]' }
+
+  - name: errors-title
+    label: 'Ошибки: Основная надпись'
+    label_singular: 'Ошибка в основной надписи'
+    folder: content/02_Ошибки/Основная_надпись
+    create: true
+    extension: md
+    format: frontmatter
+    fields:
+      - { name: title, label: 'Название ошибки', widget: string }
+      - { name: description, label: 'Краткое описание', widget: text, required: false }
+      - { name: теги, label: 'Теги', widget: list, required: false }
+      - { name: body, label: 'Текст заметки', widget: markdown }
+
+  - name: errors-assembly
+    label: 'Ошибки: Сборочный чертёж'
+    label_singular: 'Ошибка в сборочном чертеже'
+    folder: content/02_Ошибки/Сборочный_чертёж
+    create: true
+    extension: md
+    format: frontmatter
+    fields:
+      - { name: title, label: 'Название ошибки', widget: string }
+      - { name: description, label: 'Краткое описание', widget: text, required: false }
+      - { name: теги, label: 'Теги', widget: list, required: false }
+      - { name: body, label: 'Текст заметки', widget: markdown }
+
+  - name: errors-schemes
+    label: 'Ошибки: Схемы'
+    label_singular: 'Ошибка в схеме'
+    folder: content/02_Ошибки/Схемы
+    create: true
+    extension: md
+    format: frontmatter
+    fields:
+      - { name: title, label: 'Название ошибки', widget: string }
+      - { name: description, label: 'Краткое описание', widget: text, required: false }
+      - { name: теги, label: 'Теги', widget: list, required: false }
+      - { name: body, label: 'Текст заметки', widget: markdown }
+
+  - name: gosts
+    label: 'ГОСТы'
+    label_singular: 'ГОСТ'
+    folder: content/03_ГОСТы
+    create: true
+    extension: md
+    format: frontmatter
+    fields:
+      - { name: title, label: 'Обозначение и год', widget: string, hint: 'Например: ГОСТ 2.104-2006' }
+      - { name: description, label: 'Краткое описание', widget: text, required: false }
+      - { name: теги, label: 'Теги', widget: list, required: false }
+      - { name: body, label: 'Текст заметки', widget: markdown }
+
+  - name: documents
+    label: 'Документы (чек-листы)'
+    label_singular: 'Документ'
+    folder: content/04_Документы
+    create: true
+    extension: md
+    format: frontmatter
+    fields:
+      - { name: title, label: 'Тип документа', widget: string, hint: 'Например: Спецификация' }
+      - { name: description, label: 'Краткое описание', widget: text, required: false }
+      - { name: теги, label: 'Теги', widget: list, required: false }
+      - { name: body, label: 'Текст заметки', widget: markdown, hint: 'Пункт чек-листа: строка «- [ ] текст»' }
+
+  - name: templates
+    label: 'Шаблоны заметок'
+    label_singular: 'Шаблон'
+    folder: content/99_Шаблоны
+    create: true
+    extension: md
+    format: frontmatter
+    fields:
+      - { name: title, label: 'Название шаблона', widget: string }
+      - { name: description, label: 'Краткое описание', widget: text, required: false }
+      - { name: теги, label: 'Теги', widget: list, required: false }
+      - { name: body, label: 'Текст шаблона', widget: markdown }
+
+  - name: general
+    label: 'Главная, инбокс, вопросы'
+    files:
+      - name: home
+        label: 'Главная страница'
+        file: content/index.md
+        fields:
+          - { name: title, label: 'Заголовок', widget: string }
+          - { name: description, label: 'Краткое описание', widget: text, required: false }
+          - { name: теги, label: 'Теги', widget: list, required: false }
+          - { name: body, label: 'Текст страницы', widget: markdown }
+      - name: inbox
+        label: 'Инбокс (быстрые записи)'
+        file: content/00_Инбокс.md
+        fields:
+          - { name: title, label: 'Заголовок', widget: string }
+          - { name: description, label: 'Краткое описание', widget: text, required: false }
+          - { name: теги, label: 'Теги', widget: list, required: false }
+          - { name: body, label: 'Текст', widget: markdown }
+      - name: questions
+        label: 'Вопросы'
+        file: content/01_Вопросы.md
+        fields:
+          - { name: title, label: 'Заголовок', widget: string }
+          - { name: description, label: 'Краткое описание', widget: text, required: false }
+          - { name: теги, label: 'Теги', widget: list, required: false }
+          - { name: body, label: 'Текст', widget: markdown }
