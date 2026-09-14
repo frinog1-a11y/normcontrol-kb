@@ -41,7 +41,11 @@ jobs:
           ISSUE_URL: ${{ github.event.issue.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: node .github/scripts/issue-to-note.mjs
+          # необязательно: ключ ИИ (бесплатный ключ Gemini / OpenRouter / Groq) и имя модели
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+        run: node .github/scripts/note-from-issue.mjs
       - name: Зафиксировать изменения
         run: |
           git config user.name "База знаний"
