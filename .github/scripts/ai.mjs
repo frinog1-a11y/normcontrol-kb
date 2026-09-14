@@ -3,28 +3,63 @@
 import fs from "node:fs"
 import path from "node:path"
 
+const PRESETS = {
+  deepseek: { base: "https://api.deepseek.com", models: ["deepseek-chat", "deepseek-reasoner"] },
+  gemini: {
+    base: "https://generativelanguage.googleapis.com/v1beta/openai",
+    models: ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash"],
+  },
+  openrouter: {
+    base: "https://openrouter.ai/api/v1",
+    models: ["deepseek/deepseek-chat-v3-0324:free", "deepseek/deepseek-r1:free", "deepseek/deepseek-chat"],
+  },
+  groq: {
+    base: "https://api.groq.com/openai/v1",
+    models: ["llama-3.3-70b-versatile", "deepseek-r1-distill-llama-70b"],
+  },
+  openai: { base: "https://api.openai.com/v1", models: ["gpt-4o-mini"] },
+  ollama: { base: "http://localhost:11434/v1", models: ["deepseek-r1:7b", "qwen2.5:7b"] },
+}
+
 export function provider(env) {
-  if (!env.LLM_API_KEY) return null
-  if (env.LLM_BASE_URL) {
-    return { base: env.LLM_BASE_URL.replace(/\/$/, ""), models: [env.LLM_MODEL || "gpt-4o-mini"] }
-  }
-  const k = env.LLM_API_KEY
-  if (k.startsWith("AIza")) {
-    return {
-      base: "https://generativelanguage.googleapis.com/v1beta/openai",
-      models: [env.LLM_MODEL || "gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash"].filter(Boolean),
+  const custom = (env.LLM_BASE_URL || "").replace(/\/$/, "")
+  const key = (env.LLM_API_KEY || "").trim()
+  let name = (env.LLM_PROVIDER || "").toLowerCase().trim()
+
+  const hostOf = (u) => {
+    try {
+      return new URL(u).hostname
+    } catch {
+      return ""
     }
   }
-  if (k.startsWith("sk-or-")) {
-    return { base: "https://openrouter.ai/api/v1", models: [env.LLM_MODEL || "deepseek/deepseek-chat-v3.1:free"] }
+
+  if (!name) {
+    if (custom) {
+      const host = hostOf(custom)
+      name = Object.keys(PRESETS).find((p) => host && hostOf(PRESETS[p].base) === host) || "custom"
+    } else if (key.startsWith("AIza")) name = "gemini"
+    else if (key.startsWith("sk-or-")) name = "openrouter"
+    else if (key.startsWith("gsk_")) name = "groq"
+    // ключи DeepSeek и OpenAI начинаются одинаково (sk-), поэтому по умолчанию считаем DeepSeek
+    else if (key) name = "deepseek"
   }
-  if (k.startsWith("gsk_")) {
-    return { base: "https://api.groq.com/openai/v1", models: [env.LLM_MODEL || "llama-3.3-70b-versatile"] }
+
+  if (!name) return null
+
+  const preset = PRESETS[name]
+  const base = custom || preset?.base
+  if (!base) return null
+  if (!key && name !== "ollama") {
+    console.log("LLM_SKIPPED: не задан LLM_API_KEY")
+    return null
   }
-  if (k.startsWith("sk-")) {
-    return { base: "https://api.openai.com/v1", models: [env.LLM_MODEL || "gpt-4o-mini"] }
+  return {
+    name,
+    base,
+    key,
+    models: [env.LLM_MODEL, ...(preset?.models || ["gpt-4o-mini"])].filter(Boolean),
   }
-  return null
 }
 
 export function looseJson(text) {
@@ -67,9 +102,11 @@ export async function askAI(ctx) {
 
   for (const model of cfg.models) {
     try {
+      const headers = { "Content-Type": "application/json" }
+      if (cfg.key) headers.Authorization = `Bearer ${cfg.key}`
       const r = await fetch(cfg.base + "/chat/completions", {
         method: "POST",
-        headers: { Authorization: `Bearer ${env.LLM_API_KEY}`, "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           model,
           temperature: 0.2,
