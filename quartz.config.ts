@@ -24,33 +24,35 @@ const config: QuartzConfig = {
       fontOrigin: "googleFonts",
       cdnCaching: true,
       typography: {
-        // шрифты выбраны с поддержкой кириллицы
-        header: "Montserrat",
+        // все три гарнитуры поддерживают кириллицу (проверено по метаданным Google Fonts)
+        title: "Playfair Display",
+        header: "Playfair Display",
         body: "Inter",
         code: "JetBrains Mono",
       },
       colors: {
+        // «Инженерный дневник»: тёплый крем, графит, приглушённый синий, терракота
         lightMode: {
-          light: "#faf8f8",
-          lightgray: "#e5e5e5",
-          gray: "#b8b8b8",
-          darkgray: "#4e4e4e",
-          dark: "#2b2b2b",
-          secondary: "#284b63",
-          tertiary: "#84a59d",
-          highlight: "rgba(143, 159, 169, 0.15)",
-          textHighlight: "#fff23688",
+          light: "#faf6f0", // фон: тёплый крем
+          lightgray: "#e8e2d8", // границы: светло-песочный
+          gray: "#8a8578", // второстепенный текст: мягкий пепел
+          darkgray: "#2a2a2a", // основной текст: графит
+          dark: "#1a1a1a", // заголовки: почти чёрный
+          secondary: "#3a5a7a", // ссылки: приглушённый синий
+          tertiary: "#a65a3a", // акценты: терракота
+          highlight: "rgba(184, 150, 63, 0.15)", // подсветка поиска
+          textHighlight: "#b8963f88",
         },
         darkMode: {
-          light: "#161618",
-          lightgray: "#393639",
-          gray: "#646464",
-          darkgray: "#d4d4d4",
-          dark: "#ebebec",
-          secondary: "#7b97aa",
-          tertiary: "#84a59d",
-          highlight: "rgba(143, 159, 169, 0.15)",
-          textHighlight: "#b3aa0288",
+          light: "#1a1a1a", // фон: почти чёрный
+          lightgray: "#2a2a2a", // границы: графит
+          gray: "#8a8578", // мягкий пепел
+          darkgray: "#e8e2d8", // текст: крем
+          dark: "#faf6f0", // заголовки: яркий крем
+          secondary: "#7aa8c8", // ссылки: светло-синий
+          tertiary: "#d88a6a", // акценты: светло-терракота
+          highlight: "rgba(184, 150, 63, 0.25)",
+          textHighlight: "#b8963f88",
         },
       },
     },

@@ -1,3 +1,265 @@
 @use "./base.scss";
 
-// put your custom CSS here!
+// ==========================================================================
+// «Инженерный дневник» — оформление базы знаний нормоконтролёра
+// Все стили проекта собраны в этом файле, ядро Quartz не изменялось.
+// Файл подключается автоматически (quartz/plugins/emitters/componentResources.ts)
+// и идёт ПОСЛЕ стилей компонентов, поэтому правила ниже их переопределяют.
+// ==========================================================================
+
+/* ===== Общее ===== */
+body {
+  font-feature-settings: "kern", "liga", "calt";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Заголовки (Playfair Display) ===== */
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 2.2rem;
+}
+
+// у заголовка статьи в Quartz отдельное правило — уточняем размер
+.page article > h1 {
+  font-size: 2.2rem;
+}
+
+h2 {
+  font-size: 1.6rem;
+  margin-top: 2rem;
+}
+
+h3 {
+  font-size: 1.3rem;
+  margin-top: 1.5rem;
+}
+
+/* ===== Ссылки ===== */
+a {
+  color: var(--secondary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+a:hover {
+  border-bottom-color: var(--secondary);
+  color: var(--tertiary);
+}
+
+// внутренние ссылки в Quartz залиты золотым фоном — для спокойного
+// оформления убираем заливку и оставляем тонкое подчёркивание
+a.internal {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  line-height: inherit;
+  border-bottom: 1px solid var(--lightgray);
+}
+
+a.internal:hover {
+  border-bottom-color: var(--tertiary);
+}
+
+// ссылки на ещё не созданные заметки — приглушённый пунктир
+a.internal.broken {
+  border-bottom-style: dashed;
+  opacity: 0.7;
+}
+
+/* ===== Карточки (для будущих записей) ===== */
+.card {
+  background: var(--light);
+  border: 1px solid var(--lightgray);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* ===== Цитаты ===== */
+blockquote {
+  border-left: 3px solid var(--tertiary);
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+  color: var(--gray);
+  font-family: "Playfair Display", Georgia, serif;
+}
+
+/* ===== Код и номера ГОСТов ===== */
+code {
+  font-family: "JetBrains Mono", monospace;
+  background: var(--lightgray);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* ===== Поиск ===== */
+// в Quartz v4 поле поиска — это .search-bar во всплывающей панели,
+// поэтому селектор #search-container из макета заменён на реальные классы
+.search {
+  margin-bottom: 1.5rem;
+}
+
+.search .search-button {
+  border-radius: 6px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.search .search-button:hover {
+  border-color: var(--secondary);
+}
+
+.search-container .search-space > input.search-bar {
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.search-container .search-space > input.search-bar:focus {
+  outline: none;
+  border-color: var(--secondary);
+}
+
+/* ===== Левое меню (Explorer) ===== */
+.explorer {
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+
+.explorer .folder-title {
+  font-weight: 600;
+  color: var(--dark);
+}
+
+// .folder-icon в Quartz v4 — это SVG-стрелка, а не контейнер для иконки,
+// поэтому эмодзи папки добавлен к названию и приглушён до серого
+.explorer .folder-button .folder-title::before {
+  content: "📁";
+  margin-right: 0.4rem;
+  font-size: 0.9em;
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+/* ===== Граф связей ===== */
+.graph-outer {
+  border: 1px solid var(--lightgray);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.graph-container {
+  border-radius: 8px;
+}
+
+/* ===== Хлебные крошки ===== */
+.breadcrumb-container {
+  font-size: 0.85rem;
+  color: var(--gray);
+  margin-bottom: 1rem;
+}
+
+.breadcrumb-container a {
+  color: var(--gray);
+  border-bottom-color: transparent;
+}
+
+.breadcrumb-container a:hover {
+  color: var(--tertiary);
+  border-bottom-color: transparent;
+}
+
+/* ===== Кнопка «Вверх» ===== */
+#back-to-top {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 100;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--secondary);
+  color: var(--light);
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0.2s ease,
+    background-color 0.2s ease;
+}
+
+#back-to-top.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+#back-to-top:hover {
+  transform: translateY(-3px);
+  background: var(--tertiary);
+}
+
+/* ===== Плавные переходы ===== */
+// только смена цвета, и только если пользователь не просил уменьшить анимации
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease;
+  }
+}
+
+/* ===== Картинки ===== */
+img {
+  border-radius: 6px;
+  max-width: 100%;
+}
+
+/* ===== Таблицы ===== */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+}
+
+th,
+td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--lightgray);
+  text-align: left;
+}
+
+th {
+  font-weight: 600;
+  color: var(--dark);
+  background: var(--lightgray);
+}
+
