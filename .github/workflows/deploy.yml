@@ -1,24 +1,63 @@
-name: Deploy Quartz to GitHub Pages
+name: "База знаний: заметки из задач и публикация сайта"
 
 on:
   push:
     branches: [main]
+  issues:
+    types: [opened, edited]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  build:
+  # Задача (issue) с телефона → заметка в базе знаний
+  from-issue:
+    if: >-
+      github.event_name == 'issues' &&
+      github.event.issue.user.login == 'frinog1-a11y' &&
+      github.event.issue.state == 'open'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Задача → заметка
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node .github/scripts/issue-to-note.mjs
+      - name: Зафиксировать изменения
+        run: |
+          git config user.name "База знаний"
+          git config user.email "normcontrol-kb@users.noreply.github.com"
+          git add -A content
+          git diff --cached --quiet || git commit -m "Из задачи #${{ github.event.issue.number }}"
+          git push origin HEAD:main
+
+  build:
+    needs: [from-issue]
+    if: always() && (needs.from-issue.result == 'success' || needs.from-issue.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           # Quartz v4.5 требует Node >= 22 (см. "engines" в package.json и engine-strict=true в .npmrc)
@@ -36,7 +75,8 @@ jobs:
           path: public
 
   deploy:
-    needs: build
+    needs: [build]
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

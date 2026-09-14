@@ -1,0 +1,44 @@
+name: Новая заметка в базу
+description: Ошибка, ГОСТ, документ, быстрая запись или вопрос — можно заполнить с телефона
+title: "[Заметка] "
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Что добавить?
+      options:
+        - Ошибка
+        - ГОСТ
+        - Документ (чек-лист)
+        - Быстрая запись (инбокс)
+        - Вопрос
+    validations:
+      required: true
+  - type: dropdown
+    id: section
+    attributes:
+      label: Раздел (выберите для ошибок, иначе «не нужно»)
+      options:
+        - не нужно
+        - Спецификация
+        - Основная надпись
+        - Сборочный чертёж
+        - Схемы
+    validations:
+      required: true
+  - type: input
+    id: title
+    attributes:
+      label: Название
+      description: Коротко и по делу — попадёт в заголовок заметки и в файл
+      placeholder: Например. Неверный порядок записи в спецификации
+    validations:
+      required: true
+  - type: textarea
+    id: text
+    attributes:
+      label: Текст заметки
+      description: Можно прямо в это поле вставить скриншот (или прикрепить файл) — картинка попадёт в базу
+      placeholder: Как выглядит ошибка, как должно быть, на какой пункт ГОСТ опираемся
+    validations:
+      required: true
