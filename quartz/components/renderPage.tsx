@@ -3,7 +3,13 @@ import { QuartzComponent, QuartzComponentProps } from "./types"
 import HeaderConstructor from "./Header"
 import BodyConstructor from "./Body"
 import { JSResourceToScriptElement, StaticResources } from "../util/resources"
-import { FullSlug, RelativeURL, joinSegments, normalizeHastElement } from "../util/path"
+import {
+  FullSlug,
+  getSiteBasePath,
+  RelativeURL,
+  joinSegments,
+  normalizeHastElement,
+} from "../util/path"
 import { clone } from "../util/clone"
 import { visit } from "unist-util-visit"
 import { Root, Element, ElementContent } from "hast"
@@ -262,7 +268,7 @@ export function renderPage(
   const doc = (
     <html lang={lang} dir={direction}>
       <Head {...componentData} />
-      <body data-slug={slug}>
+      <body data-slug={slug} data-base-path={getSiteBasePath() ?? undefined}>
         <div id="quartz-root" class="page">
           <Body {...componentData}>
             {LeftComponent}

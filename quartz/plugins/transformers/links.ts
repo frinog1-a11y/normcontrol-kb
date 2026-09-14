@@ -1,6 +1,7 @@
 import { QuartzTransformerPlugin } from "../types"
 import {
   FullSlug,
+  getSiteBasePath,
   RelativeURL,
   SimpleSlug,
   TransformOptions,
@@ -42,6 +43,19 @@ export const CrawlLinks: QuartzTransformerPlugin<Partial<Options>> = (userOpts) 
           return (tree: Root, file) => {
             const curSlug = simplifySlug(file.data.slug!)
             const outgoing: Set<SimpleSlug> = new Set()
+            // PATCH (normcontrol-kb): links can already be root-absolute and carry the site base
+            // path (e.g. tag links produced by ObsidianFlavoredMarkdown). Strip it before resolving
+            // and re-applying it, otherwise the prefix ends up duplicated.
+            const basePath = getSiteBasePath()
+            const stripBasePath = (href: string): string => {
+              if (basePath === null || basePath === "") {
+                return href
+              }
+              if (href === basePath) {
+                return "/"
+              }
+              return href.startsWith(`${basePath}/`) ? href.slice(basePath.length) : href
+            }
 
             const transformOptions: TransformOptions = {
               strategy: opts.markdownLinkResolution,
@@ -105,13 +119,16 @@ export const CrawlLinks: QuartzTransformerPlugin<Partial<Options>> = (userOpts) 
                 if (isInternal) {
                   dest = node.properties.href = transformLink(
                     file.data.slug!,
-                    dest,
+                    stripBasePath(dest),
                     transformOptions,
                   )
 
                   // url.resolve is considered legacy
                   // WHATWG equivalent https://nodejs.dev/en/api/v18/url/#urlresolvefrom-to
-                  const url = new URL(dest, "https://base.com/" + stripSlashes(curSlug, true))
+                  const url = new URL(
+                    stripBasePath(dest),
+                    "https://base.com/" + stripSlashes(curSlug, true),
+                  )
                   const canonicalDest = url.pathname
                   let [destCanonical, _destAnchor] = splitAnchor(canonicalDest)
                   if (destCanonical.endsWith("/")) {
@@ -151,7 +168,7 @@ export const CrawlLinks: QuartzTransformerPlugin<Partial<Options>> = (userOpts) 
                   let dest = node.properties.src as RelativeURL
                   dest = node.properties.src = transformLink(
                     file.data.slug!,
-                    dest,
+                    stripBasePath(dest),
                     transformOptions,
                   )
                   node.properties.src = dest

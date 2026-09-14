@@ -9,6 +9,8 @@ export interface Argv {
   output: string
   serve: boolean
   watch: boolean
+  /** PATCH (normcontrol-kb): base path used by `--baseDir` when previewing the site locally */
+  baseDir?: string
   port: number
   wsPort: number
   remoteDevHost?: string

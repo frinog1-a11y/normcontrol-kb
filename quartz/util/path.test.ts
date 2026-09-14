@@ -361,3 +361,89 @@ describe("resolveRelative", () => {
     assert.strictEqual(path.resolveRelative("abc/def" as FullSlug, "ghi/" as SimpleSlug), "../ghi/")
   })
 })
+
+describe("site base path (normcontrol-kb patch)", () => {
+  test("normalizeBasePath", () => {
+    assert.strictEqual(path.normalizeBasePath("/normcontrol-kb"), "/normcontrol-kb")
+    assert.strictEqual(path.normalizeBasePath("/normcontrol-kb/"), "/normcontrol-kb")
+    assert.strictEqual(path.normalizeBasePath("normcontrol-kb"), "/normcontrol-kb")
+    assert.strictEqual(path.normalizeBasePath("/"), "")
+    assert.strictEqual(path.normalizeBasePath(""), "")
+  })
+
+  test("basePathFromBaseUrl", () => {
+    assert.strictEqual(path.basePathFromBaseUrl("example.com"), "")
+    assert.strictEqual(path.basePathFromBaseUrl("example.com/"), "")
+    assert.strictEqual(path.basePathFromBaseUrl("https://example.com/a/b/"), "/a/b")
+    assert.strictEqual(
+      path.basePathFromBaseUrl("frinog1-a11y.github.io/normcontrol-kb"),
+      "/normcontrol-kb",
+    )
+    assert.strictEqual(path.basePathFromBaseUrl(undefined), "")
+  })
+
+  test("root-absolute internal links once a base path is set", () => {
+    path.setSiteBasePath("/normcontrol-kb")
+    try {
+      assert.strictEqual(path.pathToRoot("03_ГОСТы/index" as FullSlug), "/normcontrol-kb")
+      assert.strictEqual(
+        path.resolveRelative("index" as FullSlug, "03_ГОСТы/ГОСТ_2.104-2006" as FullSlug),
+        "/normcontrol-kb/03_ГОСТы/ГОСТ_2.104-2006",
+      )
+      assert.strictEqual(
+        path.resolveRelative("03_ГОСТы/index" as FullSlug, "index" as FullSlug),
+        "/normcontrol-kb/",
+      )
+      assert.strictEqual(
+        path.transformLink("03_ГОСТы/index" as FullSlug, "00_Инбокс", {
+          strategy: "shortest",
+          allSlugs: [],
+        }),
+        "/normcontrol-kb/00_Инбокс",
+      )
+    } finally {
+      path.setSiteBasePath(null)
+    }
+  })
+
+  test("relative links remain the default", () => {
+    assert.strictEqual(path.pathToRoot("03_ГОСТы/index" as FullSlug), "..")
+    assert.strictEqual(path.resolveRelative("index" as FullSlug, "abc" as FullSlug), "./abc")
+    assert.strictEqual(
+      path.transformLink("03_ГОСТы/index" as FullSlug, "00_Инбокс", {
+        strategy: "shortest",
+        allSlugs: [],
+      }),
+      "../00_Инбокс",
+    )
+  })
+
+  test("client-side scripts read the base path from the rendered body", () => {
+    const globals = globalThis as { document?: unknown }
+    const previous = globals.document
+    globals.document = { body: { dataset: { basePath: "/normcontrol-kb" } } }
+    try {
+      assert.strictEqual(path.getSiteBasePath(), "/normcontrol-kb")
+    } finally {
+      if (previous === undefined) {
+        delete globals.document
+      } else {
+        globals.document = previous
+      }
+    }
+  })
+
+  test("worker threads pick the base path up from the environment", () => {
+    const previous = process.env.QUARTZ_BASE_PATH
+    process.env.QUARTZ_BASE_PATH = "/normcontrol-kb"
+    try {
+      assert.strictEqual(path.getSiteBasePath(), "/normcontrol-kb")
+    } finally {
+      if (previous === undefined) {
+        delete process.env.QUARTZ_BASE_PATH
+      } else {
+        process.env.QUARTZ_BASE_PATH = previous
+      }
+    }
+  })
+})

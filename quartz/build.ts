@@ -9,7 +9,14 @@ import { parseMarkdown } from "./processors/parse"
 import { filterContent } from "./processors/filter"
 import { emitContent } from "./processors/emit"
 import cfg from "../quartz.config"
-import { FilePath, joinSegments, slugifyFilePath } from "./util/path"
+import {
+  basePathFromBaseUrl,
+  FilePath,
+  joinSegments,
+  normalizeBasePath,
+  setSiteBasePath,
+  slugifyFilePath,
+} from "./util/path"
 import chokidar from "chokidar"
 import { ProcessedContent } from "./plugins/vfile"
 import { Argv, BuildCtx } from "./util/ctx"
@@ -43,6 +50,24 @@ type BuildData = {
 }
 
 async function buildQuartz(argv: Argv, mut: Mutex, clientRefresh: () => void) {
+  // PATCH (normcontrol-kb): decide how internal links are emitted before anything is rendered.
+  // - `npx quartz build` (incl. GitHub Actions) mirrors the deployed base path from `baseUrl`,
+  //   i.e. links become root-absolute: `/normcontrol-kb/03_ГОСТы/...`
+  // - `npx quartz build --serve` keeps Quartz' relative links so the preview works on
+  //   `http://localhost:8080/`
+  // - `npx quartz build --serve --baseDir /normcontrol-kb` mirrors production locally
+  const serveBaseDir = normalizeBasePath(argv.baseDir ?? "")
+  const configuredBasePath = basePathFromBaseUrl(cfg.configuration.baseUrl)
+  const basePath = argv.serve && serveBaseDir === "" ? null : serveBaseDir || configuredBasePath
+  setSiteBasePath(basePath)
+
+  // parsed pages are rendered inside worker threads as well, so the base path travels via the env
+  if (basePath === null) {
+    delete process.env.QUARTZ_BASE_PATH
+  } else {
+    process.env.QUARTZ_BASE_PATH = basePath
+  }
+
   const ctx: BuildCtx = {
     buildId: randomIdNonSecure(),
     argv,

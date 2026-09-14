@@ -6,6 +6,71 @@ import { clone } from "./clone"
 
 export const QUARTZ = "quartz"
 
+/**
+ * PATCH (normcontrol-kb): internal links are emitted as root-absolute URLs that include the site
+ * base path (e.g. `/normcontrol-kb/03_ГОСТы/ГОСТ_2.104-2006`) instead of relative ones
+ * (`../03_ГОСТы/ГОСТ_2.104-2006`). Root-absolute links keep working no matter which URL a page was
+ * opened with: a cached copy, a bookmark pointing at the domain root, a URL without a trailing
+ * slash, or a future rename of the repository.
+ *
+ * `null` (the default) restores Quartz' original relative-link behaviour, which is what the unit
+ * tests and a plain local preview on `http://localhost:8080/` expect.
+ */
+let siteBasePath: string | null = null
+
+/** Enables base-path aware (root-absolute) internal links. Pass `null` to restore Quartz defaults. */
+export function setSiteBasePath(basePath: string | null) {
+  siteBasePath = basePath
+}
+
+/**
+ * Base path (`/normcontrol-kb`, or `""` for the domain root) used for root-absolute internal links.
+ * Returns `null` when links should stay relative (Quartz default).
+ */
+export function getSiteBasePath(): string | null {
+  if (siteBasePath !== null) {
+    return siteBasePath
+  }
+
+  // client-side scripts (search, explorer, graph) read the base path back from the rendered page
+  if (typeof document !== "undefined") {
+    const fromDom = document.body?.dataset?.basePath
+    if (typeof fromDom === "string") {
+      return fromDom
+    }
+  }
+
+  // pages are also rendered inside worker threads, which inherit the environment
+  if (typeof process !== "undefined" && process.env?.QUARTZ_BASE_PATH) {
+    return normalizeBasePath(process.env.QUARTZ_BASE_PATH)
+  }
+
+  return null
+}
+
+/** Normalizes `/normcontrol-kb/` to `/normcontrol-kb` and `"/"`/`""` to `""` (domain root). */
+export function normalizeBasePath(basePath: string): string {
+  const trimmed = basePath.trim().replace(/\/+$/, "")
+  if (trimmed === "" || trimmed === "/") {
+    return ""
+  }
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`
+}
+
+/** Turns a `baseUrl` such as `frinog1-a11y.github.io/normcontrol-kb` into `/normcontrol-kb`. */
+export function basePathFromBaseUrl(baseUrl?: string): string {
+  if (!baseUrl) {
+    return ""
+  }
+
+  try {
+    const url = new URL(baseUrl.includes("://") ? baseUrl : `https://${baseUrl}`)
+    return normalizeBasePath(url.pathname)
+  } catch {
+    return ""
+  }
+}
+
 /// Utility type to simulate nominal types in TypeScript
 type SlugLike<T> = string & { __brand: T }
 
@@ -154,6 +219,12 @@ export function normalizeHastElement(rawEl: HastElement, curBase: FullSlug, newB
 
 // resolve /a/b/c to ../..
 export function pathToRoot(slug: FullSlug): RelativeURL {
+  const basePath = getSiteBasePath()
+  if (basePath !== null) {
+    // PATCH (normcontrol-kb): root-absolute path that already contains the site base path
+    return (basePath === "" ? "/" : basePath) as RelativeURL
+  }
+
   let rootPath = slug
     .split("/")
     .filter((x) => x !== "")

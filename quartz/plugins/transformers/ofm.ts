@@ -22,7 +22,7 @@ import checkboxScript from "../../components/scripts/checkbox.inline"
 // @ts-ignore
 import mermaidScript from "../../components/scripts/mermaid.inline"
 import mermaidStyle from "../../components/styles/mermaid.inline.scss"
-import { FilePath, pathToRoot, slugTag, slugifyFilePath } from "../../util/path"
+import { FilePath, joinSegments, pathToRoot, slugTag, slugifyFilePath } from "../../util/path"
 import { toHast } from "mdast-util-to-hast"
 import { toHtml } from "hast-util-to-html"
 import { capitalize } from "../../util/lang"
@@ -350,7 +350,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<Partial<Options>>
 
                 return {
                   type: "link",
-                  url: base + `/tags/${tag}`,
+                  url: joinSegments(base, `tags/${tag}`),
                   data: {
                     hProperties: {
                       className: ["tag-link"],
