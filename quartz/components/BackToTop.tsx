@@ -44,14 +44,18 @@ BackToTop.afterDOMLoaded = `
     btn.addEventListener("click", toTop)
     toggle()
 
-    window.addCleanup(() => {
-      window.removeEventListener("scroll", toggle)
-      btn.removeEventListener("click", toTop)
-    })
+    // window.addCleanup появляется только после инициализации роутера Quartz,
+    // поэтому проверяем наличие функции, чтобы не сорвать выполнение остальных скриптов
+    if (typeof window.addCleanup === "function") {
+      window.addCleanup(() => {
+        window.removeEventListener("scroll", toggle)
+        btn.removeEventListener("click", toTop)
+      })
+    }
   }
 
+  // настройка запускается по событию nav — так работают штатные скрипты Quartz
   document.addEventListener("nav", setupBackToTop)
-  setupBackToTop()
 `
 
 export default (() => BackToTop) satisfies QuartzComponentConstructor
