@@ -5,7 +5,7 @@ import * as Component from "./quartz/components"
 export const sharedPageComponents: SharedLayout = {
   head: Component.Head(),
   header: [],
-  afterBody: [Component.EditOnGitHub(), Component.BackToTop()],
+  afterBody: [Component.BackgroundParticles(), Component.EditOnGitHub(), Component.BackToTop()],
   footer: Component.Footer({
     links: {
       "Репозиторий базы": "https://github.com/frinog1-a11y/normcontrol-kb",
@@ -43,9 +43,16 @@ export const defaultContentPageLayout: PageLayout = {
   ],
   right: [
     Component.Graph({
-      // граф связей: полный граф базы (depth -1), теги показываем, фильтров нет
-      localGraph: { depth: -1, showTags: true, removeTags: [] },
-      globalGraph: { showTags: true, removeTags: [] },
+      // граф связей: полный граф базы (depth -1), просторная раскладка, при наведении светятся соседи
+      localGraph: {
+        depth: -1,
+        showTags: true,
+        removeTags: [],
+        linkDistance: 50,
+        repelForce: 1.5,
+        focusOnHover: true,
+      },
+      globalGraph: { showTags: true, removeTags: [], linkDistance: 50, repelForce: 1.5 },
     }),
     Component.DesktopOnly(Component.TableOfContents()),
     Component.Backlinks(),
@@ -77,8 +84,15 @@ export const defaultListPageLayout: PageLayout = {
     // граф связей показываем и на страницах-списках (папки и теги): у такой страницы
     // собственного узла в contentIndex может не быть, поэтому здесь рисуем весь граф базы
     Component.Graph({
-      localGraph: { depth: -1, showTags: true, removeTags: [] },
-      globalGraph: { showTags: true, removeTags: [] },
+      localGraph: {
+        depth: -1,
+        showTags: true,
+        removeTags: [],
+        linkDistance: 50,
+        repelForce: 1.5,
+        focusOnHover: true,
+      },
+      globalGraph: { showTags: true, removeTags: [], linkDistance: 50, repelForce: 1.5 },
     }),
   ],
 }

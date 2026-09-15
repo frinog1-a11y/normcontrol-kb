@@ -160,6 +160,40 @@ code {
   opacity: 0.55;
 }
 
+/* ===== Астральный фон ===== */
+body {
+  background: linear-gradient(160deg, #f2eef8 0%, #ebe4f4 100%);
+  background-attachment: fixed;
+  position: relative;
+  z-index: 1;
+}
+
+[saved-theme="dark"] body {
+  background: linear-gradient(160deg, #1a1626 0%, #16122a 100%);
+  background-attachment: fixed;
+}
+
+#bg-particles {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.7;
+}
+
+[saved-theme="dark"] #bg-particles {
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #bg-particles {
+    display: none;
+  }
+}
+
 /* ===== Граф связей ===== */
 .graph-outer {
   border: 1px solid var(--lightgray);
@@ -172,38 +206,19 @@ code {
 .graph-container {
   min-height: 400px;
   border-radius: 8px;
-  background: var(--light);
-  border: 1px solid var(--lightgray);
+  background: rgba(242, 238, 248, 0.5);
+  border: 1px solid #e0d8ec;
+  backdrop-filter: blur(4px);
+}
+
+[saved-theme="dark"] .graph-container {
+  background: rgba(26, 22, 38, 0.5);
+  border: 1px solid #2a2440;
 }
 
 /* ===== Палитра категорий графа ===== */
-// узлы графа красятся по категориям (ошибки и документы — по подпапкам),
-// цвета читает quartz/components/scripts/graph.inline.ts
-:root {
-  --graph-cat-1: #6a5a8a; // лаванда
-  --graph-cat-2: #c87a9a; // розовый
-  --graph-cat-3: #7a8a5a; // олива
-  --graph-cat-4: #5a7a8a; // серо-голубой
-  --graph-cat-5: #a86a4a; // терракота
-  --graph-cat-6: #8a7f9a; // серо-лавандовый
-  --graph-cat-7: #4a6a9a; // синий
-  --graph-cat-8: #5a8a6a; // зелёный
-  --graph-cat-9: #9a8a4a; // охра
-  --graph-cat-10: #4a8a8a; // бирюзовый
-}
-
-:root[saved-theme="dark"] {
-  --graph-cat-1: #b8a8d8;
-  --graph-cat-2: #d89ab8;
-  --graph-cat-3: #b8c88a;
-  --graph-cat-4: #8ab8c8;
-  --graph-cat-5: #d8a888;
-  --graph-cat-6: #a8a0b8;
-  --graph-cat-7: #8a9ad8;
-  --graph-cat-8: #98c8a8;
-  --graph-cat-9: #d8c088;
-  --graph-cat-10: #90c8c0;
-}
+// узлы графа красятся по разделам базы в самом скрипте графа
+// (quartz/components/scripts/graph.inline.ts, функция getNodeColor)
 
 /* ===== Хлебные крошки ===== */
 .breadcrumb-container {

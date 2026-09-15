@@ -25,6 +25,7 @@ import Flex from "./Flex"
 import ConditionalRender from "./ConditionalRender"
 import BackToTop from "./BackToTop"
 import EditOnGitHub from "./EditOnGitHub"
+import BackgroundParticles from "./BackgroundParticles"
 
 export {
   ArticleTitle,
@@ -54,4 +55,5 @@ export {
   ConditionalRender,
   BackToTop,
   EditOnGitHub,
+  BackgroundParticles,
 }
