@@ -87,6 +87,17 @@ BackgroundParticles.afterDOMLoaded = `
     function onPointerDown(e) {
       const x = typeof e.clientX === "number" ? e.clientX : mouse.x
       const y = typeof e.clientY === "number" ? e.clientY : mouse.y
+
+      // приоритет: клик по особой частице открывает спрятанную игру
+      const sdx = x - specialParticle.x
+      const sdy = y - specialParticle.y
+      if (specialParticle.r + 11 > Math.sqrt(sdx * sdx + sdy * sdy)) {
+        if (e.preventDefault) e.preventDefault()
+        showSecretToast("🚀 Ты нашёл секретную частицу! Добро пожаловать, Адмирал.")
+        openSecretPage(800)
+        return
+      }
+
       if (x < -500) return
       mouse.x = x
       mouse.y = y
@@ -155,6 +166,18 @@ BackgroundParticles.afterDOMLoaded = `
       })
     }
     for (const p of particles) p.r = p.baseR
+
+    // ===== Секрет: особая частица (отдельно от массива particles) =====
+    const specialParticle = {
+      x: Math.random() * w,
+      y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.2,
+      vy: (Math.random() - 0.5) * 0.2,
+      baseR: 4,
+      r: 4,
+      color: "#ffd6a8",
+      pulsePhase: Math.random() * Math.PI * 2,
+    }
 
     const themeObserver = new MutationObserver(function() {
       const next = currentColors()
@@ -265,6 +288,39 @@ BackgroundParticles.afterDOMLoaded = `
         ctx.fill()
       }
 
+      // особая частица: медленный дрейф, пульсация, золотое свечение
+      specialParticle.pulsePhase += 0.03
+      specialParticle.r = specialParticle.baseR * (1 + Math.sin(specialParticle.pulsePhase) * 0.3)
+      specialParticle.x += specialParticle.vx
+      specialParticle.y += specialParticle.vy
+      if (specialParticle.x < 0) specialParticle.x = w
+      if (specialParticle.x > w) specialParticle.x = 0
+      if (specialParticle.y < 0) specialParticle.y = h
+      if (specialParticle.y > h) specialParticle.y = 0
+
+      const spOpacity = 0.7 + Math.sin(specialParticle.pulsePhase) * 0.3
+      ctx.save()
+      ctx.shadowColor = "#c8a878"
+      ctx.shadowBlur = 30
+      ctx.globalAlpha = spOpacity * 0.3
+      ctx.fillStyle = specialParticle.color
+      ctx.beginPath()
+      ctx.arc(specialParticle.x, specialParticle.y, specialParticle.r * 2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = spOpacity
+      ctx.beginPath()
+      ctx.arc(specialParticle.x, specialParticle.y, specialParticle.r, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+
+      ctx.save()
+      ctx.globalAlpha = 1
+      ctx.fillStyle = "#fff5e0"
+      ctx.beginPath()
+      ctx.arc(specialParticle.x, specialParticle.y, specialParticle.r / 2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+
       ctx.globalAlpha = 1
       rafId = requestAnimationFrame(draw)
     }
@@ -314,6 +370,62 @@ BackgroundParticles.afterDOMLoaded = `
       old.parentNode.replaceChild(fresh, old)
     }
   }
+
+  // ===== Секреты: путь к спрятанной игре и тост =====
+  function gameUrl() {
+    const base = document.body.dataset.basePath || ""
+    return base + "/echelon"
+  }
+
+  let secretFound = false
+
+  function openSecretPage(delay) {
+    if (secretFound) return
+    secretFound = true
+    setTimeout(function() {
+      window.location.href = gameUrl()
+    }, delay || 800)
+  }
+
+  function showSecretToast(text) {
+    const toast = document.createElement("div")
+    toast.className = "secret-toast"
+    toast.textContent = text
+    document.body.appendChild(toast)
+    setTimeout(function() {
+      toast.classList.add("visible")
+    }, 50)
+    setTimeout(function() {
+      toast.classList.remove("visible")
+    }, 750)
+    setTimeout(function() {
+      toast.remove()
+    }, 1100)
+  }
+
+  // ===== Секретный код E-C-H-E-L-O-N =====
+  const SECRET = ["KeyE", "KeyC", "KeyH", "KeyE", "KeyL", "KeyO", "KeyN"]
+  let secretIndex = 0
+
+  function onSecretKey(e) {
+    const t = e.target
+    // не мешаем вводу в поиске и полях
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return
+    if (e.code === SECRET[secretIndex]) {
+      secretIndex++
+      if (secretIndex === SECRET.length) {
+        secretIndex = 0
+        showSecretToast("✨ Секретный код принят! Входим в Зыбь.")
+        openSecretPage(800)
+      }
+    } else {
+      secretIndex = 0
+      // если это была первая буква — считаем началом последовательности
+      if (e.code === SECRET[0]) secretIndex = 1
+    }
+  }
+
+  document.addEventListener("keydown", onSecretKey)
 
   initParticles()
 

@@ -649,6 +649,31 @@ th {
   }
 }
 
+/* ===== Секретный тост (триггеры скрытой игры) ===== */
+.secret-toast {
+  position: fixed;
+  top: 2rem;
+  left: 50%;
+  transform: translate(-50%, -10px);
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #8a7ab8, #b86a8a);
+  color: #f2eef8;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(138, 122, 184, 0.4);
+  z-index: 999;
+  font-size: 0.95rem;
+  opacity: 0;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+  pointer-events: none;
+}
+
+.secret-toast.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 /* ===== Мини-игра «Сквозь Зыбь» (/echelon) ===== */
 #echelon-wrap {
   max-width: 1000px;
