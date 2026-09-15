@@ -120,6 +120,8 @@ export async function askAI(ctx) {
         body: JSON.stringify({
           model,
           temperature: 0.2,
+          // PATCH (normcontrol-kb): жёсткий предел на объём ответа — расход по ключу не разрастётся
+          max_tokens: 2000,
           messages: [
             { role: "system", content: rules },
             { role: "user", content: user },
