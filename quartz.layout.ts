@@ -14,6 +14,7 @@ export const sharedPageComponents: SharedLayout = {
   ],
   footer: Component.Footer({
     links: {
+      "✏ Как добавить заметку": "https://frinog1-a11y.github.io/normcontrol-kb/add-note",
       "Репозиторий базы": "https://github.com/frinog1-a11y/normcontrol-kb",
       "Редактор базы": "https://frinog1-a11y.github.io/normcontrol-kb/static/admin/",
       Quartz: "https://quartz.jzhao.xyz",
@@ -30,6 +31,11 @@ export const defaultContentPageLayout: PageLayout = {
     }),
     Component.ArticleTitle(),
     Component.ContentMeta(),
+    Component.ConditionalRender({
+      component: Component.AddNoteLink(),
+      // на самой странице-инструкции кнопка не нужна
+      condition: (page) => page.fileData.slug !== "add-note",
+    }),
     Component.TagList(),
   ],
   left: [

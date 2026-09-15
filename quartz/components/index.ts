@@ -28,6 +28,7 @@ import EditOnGitHub from "./EditOnGitHub"
 import BackgroundParticles from "./BackgroundParticles"
 import ReadingProgress from "./ReadingProgress"
 import SoundToggle from "./SoundToggle"
+import AddNoteLink from "./AddNoteLink"
 
 export {
   ArticleTitle,
@@ -60,4 +61,5 @@ export {
   BackgroundParticles,
   ReadingProgress,
   SoundToggle,
+  AddNoteLink,
 }
