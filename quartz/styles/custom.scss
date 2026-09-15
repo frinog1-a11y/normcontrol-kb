@@ -800,6 +800,35 @@ th {
   }
 }
 
+/* ===== Кнопка «Создать задачу» на странице /add-note ===== */
+.add-note-button {
+  display: inline-block;
+  padding: 1rem 2rem;
+  margin: 1rem 0;
+  background: linear-gradient(135deg, #8a7ab8, #b86a8a);
+  color: #f2eef8;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(138, 122, 184, 0.3);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.add-note-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(138, 122, 184, 0.5);
+  color: #f2eef8;
+  text-decoration: none;
+}
+
+[saved-theme="dark"] .add-note-button {
+  background: linear-gradient(135deg, #b8a8d8, #d89ab8);
+  color: #1a1626;
+}
+
 /* ===== Мини-игра «Сквозь Зыбь» (/echelon) ===== */
 #echelon-wrap {
   max-width: 1000px;
