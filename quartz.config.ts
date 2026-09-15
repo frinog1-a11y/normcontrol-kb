@@ -8,8 +8,10 @@ import * as Plugin from "./quartz/plugins"
  */
 const config: QuartzConfig = {
   configuration: {
-    pageTitle: "База знаний нормоконтролёра",
-    pageTitleSuffix: " | Нормоконтроль",
+    pageTitle: "Между строк чертежа",
+    // суффикс к заголовкам вкладок: пустая строка — во вкладке только название страницы,
+    // поэтому на главной вкладка читается ровно как «Между строк чертежа»
+    pageTitleSuffix: "",
     enableSPA: true,
     enablePopovers: true,
     analytics: null,

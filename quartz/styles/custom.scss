@@ -165,10 +165,15 @@ code {
   border: 1px solid var(--lightgray);
   border-radius: 8px;
   overflow: hidden;
+  // ядро Quartz задаёт 250px высоты — min-height перекрывает и даёт читаемый граф
+  min-height: 400px;
 }
 
 .graph-container {
+  min-height: 400px;
   border-radius: 8px;
+  background: var(--light);
+  border: 1px solid var(--lightgray);
 }
 
 /* ===== Хлебные крошки ===== */

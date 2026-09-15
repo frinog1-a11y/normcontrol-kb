@@ -43,8 +43,8 @@ export const defaultContentPageLayout: PageLayout = {
   ],
   right: [
     Component.Graph({
-      // граф связей: показываем теги, ничего не скрываем
-      localGraph: { showTags: true, removeTags: [] },
+      // граф связей: полный граф базы (depth -1), теги показываем, фильтров нет
+      localGraph: { depth: -1, showTags: true, removeTags: [] },
       globalGraph: { showTags: true, removeTags: [] },
     }),
     Component.DesktopOnly(Component.TableOfContents()),
