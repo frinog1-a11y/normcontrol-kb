@@ -217,7 +217,7 @@ body {
 }
 
 /* ===== Эшелон 1: появление контента, прогресс, чек-листы, выделение ===== */
-.page > #quartz-body {
+article {
   animation: fadeIn 0.3s ease-out;
 }
 
@@ -452,7 +452,7 @@ article h2::after {
 
 /* уважаем системную настройку «меньше движения» */
 @media (prefers-reduced-motion: reduce) {
-  .page > #quartz-body,
+  article,
   article h1,
   article h2,
   article h3 {
