@@ -114,20 +114,20 @@
     tone(220, 0.05, 0.3, "sine", 880)
   }
   function playCrystal() {
-    tone(880, 0.06, 0.4)
-    tone(1320, 0.03, 0.4)
+    tone(880, 0.04, 0.4)
+    tone(1320, 0.02, 0.4)
   }
   function playRift() {
-    tone(200, 0.07, 0.3)
-    tone(80, 0.07, 0.3, "square")
-    noiseHit(0.1, 0.25, 0)
+    tone(200, 0.045, 0.3)
+    tone(80, 0.045, 0.3, "square")
+    noiseHit(0.07, 0.25, 0)
   }
   function playTlen() {
-    tone(120, 0.06, 0.5, "sine", 60)
-    noiseHit(0.06, 0.4, 200)
+    tone(120, 0.04, 0.5, "sine", 60)
+    noiseHit(0.04, 0.4, 200)
   }
   function playLayer() {
-    chord([261, 329, 392], 0.04, 0.6)
+    chord([261, 329, 392], 0.03, 0.6)
   }
   function playVictory() {
     var seq = [261, 329, 392, 523]
@@ -135,14 +135,14 @@
       setTimeout(
         (function (f) {
           return function () {
-            tone(f, 0.05, 0.35)
+            tone(f, 0.035, 0.35)
           }
         })(seq[i]),
         i * 180,
       )
     }
     setTimeout(function () {
-      chord([261, 329, 392, 523], 0.05, 1.5)
+      chord([261, 329, 392, 523], 0.035, 1.5)
     }, 760)
   }
   function playDefeat() {
@@ -162,7 +162,7 @@
     lfo.connect(lfoGain)
     lfoGain.connect(osc.frequency)
     g.gain.setValueAtTime(0, t)
-    g.gain.linearRampToValueAtTime(0.05, t + 0.05)
+    g.gain.linearRampToValueAtTime(0.035, t + 0.05)
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.85)
     osc.connect(g)
     g.connect(ctx.destination)
@@ -172,11 +172,11 @@
     lfo.stop(t + 0.9)
   }
   function playShot() {
-    tone(1200, 0.03, 0.05, "sine", 600)
+    tone(1200, 0.02, 0.05, "sine", 600)
   }
   function playHitRift() {
-    tone(400, 0.04, 0.1)
-    noiseHit(0.04, 0.1, 0)
+    tone(400, 0.025, 0.1)
+    noiseHit(0.025, 0.1, 0)
   }
   function playNote() {
     tone(660, 0.04, 0.3)
@@ -184,10 +184,10 @@
 
   // ===== AMBIENT «Дышащая Мерея»: drone + ветер + кристаллы + пульсары =====
   var AMB_LAYERS = [
-    { drone: [55, 82.5], wind: 400, crystals: [0.005, 0.004, 0.003], pulse: [10, 15] },
-    { drone: [55, 78], wind: 500, crystals: [0.004, 0.003, 0.002], pulse: [8, 12] },
-    { drone: [55, 73], wind: 600, crystals: [0.0025, 0.002, 0.0015], pulse: [6, 10] },
-    { drone: [41, 61], wind: 300, crystals: [0.001, 0, 0], pulse: [5, 8] },
+    { drone: [55, 82.5], wind: 400, crystals: [0.002, 0.0015, 0], pulse: [10, 15] },
+    { drone: [55, 78], wind: 500, crystals: [0.0016, 0.0012, 0], pulse: [8, 12] },
+    { drone: [55, 73], wind: 600, crystals: [0.001, 0.0008, 0], pulse: [6, 10] },
+    { drone: [41, 61], wind: 300, crystals: [0.0004, 0, 0], pulse: [5, 8] },
     { drone: [41, 55], wind: 200, crystals: [0, 0, 0], pulse: [3, 6] },
   ]
   var AMB_BOSS = { drone: [50, 77], wind: 250, crystals: [0, 0, 0], pulse: [3, 5] }
@@ -198,7 +198,12 @@
     var master = ctx.createGain()
     master.gain.setValueAtTime(0, ctx.currentTime)
     master.gain.linearRampToValueAtTime(1, ctx.currentTime + 2)
-    master.connect(ctx.destination)
+    // тёплый общий lowpass: срезает «пищащие» верха всего ambient
+    var masterLp = ctx.createBiquadFilter()
+    masterLp.type = "lowpass"
+    masterLp.frequency.value = 800
+    master.connect(masterLp)
+    masterLp.connect(ctx.destination)
     ambient = {
       master: master,
       nodes: [],
@@ -217,8 +222,8 @@
     d1.type = "sine"
     d0.frequency.value = 55
     d1.frequency.value = 82.5
-    dg0.gain.value = 0.012
-    dg1.gain.value = 0.008
+    dg0.gain.value = 0.005
+    dg1.gain.value = 0.003
     d0.connect(dg0)
     d1.connect(dg1)
     dg0.connect(master)
@@ -236,7 +241,7 @@
     var wlfoGain = ctx.createGain()
     wf.type = "lowpass"
     wf.frequency.value = 400
-    wg.gain.value = 0.015
+    wg.gain.value = 0.006
     wlfo.frequency.value = 0.08
     wlfoGain.gain.value = 150
     wlfo.connect(wlfoGain)
@@ -249,18 +254,19 @@
     ambient.windFilter = wf
     ambient.nodes.push(wsrc, wf, wg, wlfo, wlfoGain)
 
-    var cf = [880, 1320, 1760]
-    var clfo = [0.15, 0.11, 0.08]
-    for (var i = 0; i < 3; i++) {
+    // кристаллы: только 880 и 1320 Гц (1760 «пищал» — убран)
+    var cf = [880, 1320]
+    var clfo = [0.15, 0.11]
+    for (var i = 0; i < 2; i++) {
       var co = ctx.createOscillator()
       var cg = ctx.createGain()
       var cl = ctx.createOscillator()
       var clg = ctx.createGain()
       co.type = "sine"
       co.frequency.value = cf[i]
-      cg.gain.value = 0.005
+      cg.gain.value = 0.002
       cl.frequency.value = clfo[i]
-      clg.gain.value = 0.003
+      clg.gain.value = 0.0015
       cl.connect(clg)
       clg.connect(cg.gain)
       co.connect(cg)
@@ -336,21 +342,26 @@
         var fb = ctx.createGain()
         var t = ctx.currentTime
         osc.type = "sine"
-        osc.frequency.setValueAtTime(220, t)
-        osc.frequency.linearRampToValueAtTime(440, t + 0.1)
-        g.gain.setValueAtTime(0.02, t)
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.35)
+        osc.frequency.setValueAtTime(180, t)
+        osc.frequency.linearRampToValueAtTime(240, t + 0.3)
+        g.gain.setValueAtTime(0.008, t)
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.6)
         dl.delayTime.value = 0.3
         fb.gain.value = 0.3
-        osc.connect(g)
+        // мягкий lowpass: пульс больше не «долбит» в уши
+        var plp = ctx.createBiquadFilter()
+        plp.type = "lowpass"
+        plp.frequency.value = 600
+        osc.connect(plp)
+        plp.connect(g)
         g.connect(ambient.master)
         g.connect(dl)
         dl.connect(fb)
         fb.connect(dl)
         fb.connect(ambient.master)
         osc.start()
-        osc.stop(t + 0.4)
-        ambient.nodes.push(osc, g, dl, fb)
+        osc.stop(t + 0.7)
+        ambient.nodes.push(osc, g, dl, fb, plp)
       }
       schedulePulse()
     }, wait)
@@ -411,7 +422,7 @@
     },
     {
       title: "Запись пятая — О Надежде",
-      body: "Мы ушли за грань. Мы потеряли всё. Но мы всё ещё плывём. Потому что где-то там — Тихий Гавань. Место, где исцеляется время. И мы верим: мы дойдём.",
+      body: "Мы ушли за грань. Мы потеряли всё. Но мы всё ещё плывём. Потому что где-то там — Тихая Гавань. Место, где исцеляется время. И мы верим: мы дойдём.",
       sign: "— из последней записи Двенадцатого Адмирала",
     },
   ]
@@ -627,6 +638,8 @@
   function updateBoss(dt) {
     var bs = state.boss
     if (!bs) return
+    // управление флагманом работает и в бою
+    if (!updateShip(dt)) return
     // выход на арену из-за правого края
     if (bs.x > W - 150) {
       bs.x -= 170 * dt
@@ -784,6 +797,7 @@
   }
 
   // ===== ФИНАЛЬНЫЙ «МУЛЬТИК»: 15 секунд canvas-анимации =====
+  // ===== ФИНАЛЬНЫЙ «МУЛЬТИК»: Сердце Бездны → портал → салют =====
   function playFinalCinematic() {
     state.paused = true
     endGame(true, "Флагман дошёл до Тихой Гавани!", true)
@@ -793,112 +807,279 @@
     cv.height = window.innerHeight
     document.body.appendChild(cv)
     var c = cv.getContext("2d")
+    var cx = cv.width / 2
+    var cy = cv.height / 2
     var start = performance.now()
+    var exploded = false
+    var flash = 0
     var chordDone = false
+    var swishDone = false
+    var finalAccordDone = false
     var fadeDone = false
+    var fireDone = false
+    var stars = []
+    var sparks = []
+    var shipX = -70
+    var portalOpen = 1
     playVictory()
 
+    // взрыв Сердца Бездны: низкий удар + шум, 140 звёзд-осколков
+    function boom() {
+      playRift()
+      noiseHit(0.08, 0.6, 400)
+      for (var i = 0; i < 140; i++) {
+        var a = Math.random() * Math.PI * 2
+        var sp = 60 + Math.random() * 260
+        stars.push({
+          x: cx,
+          y: cy,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp,
+          r: 1 + Math.random() * 2.2,
+        })
+      }
+    }
+
+    // салют: ракета снизу, взрывается на искры
+    function launchFirework() {
+      var colors = ["#c8a878", "#8a7ab8", "#b86a8a", "#f2eef8"]
+      sparks.push({
+        x: cx + (Math.random() - 0.5) * cv.width * 0.7,
+        y: cv.height + 20,
+        vx: (Math.random() - 0.5) * 60,
+        vy: -420 - Math.random() * 160,
+        fuse: 0.5 + Math.random() * 0.45,
+        color: colors[Math.floor(Math.random() * colors.length)],
+      })
+    }
+
+    function burst(x, y, color) {
+      for (var i = 0; i < 40; i++) {
+        var a = (Math.PI * 2 * i) / 40 + Math.random() * 0.2
+        var sp = 70 + Math.random() * 150
+        sparks.push({
+          x: x,
+          y: y,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp,
+          color: color,
+          life: 1,
+          spark: true,
+        })
+      }
+    }
     function frame() {
       var t = (performance.now() - start) / 1000
-      var cx = cv.width / 2
-      var cy = cv.height / 2
       c.fillStyle = "#000"
       c.fillRect(0, 0, cv.width, cv.height)
 
-      // 0–3 с: пульсирующая золотая точка
-      var pulse = 0.6 + 0.4 * Math.sin(t * 4)
-      c.save()
-      c.shadowColor = "#c8a878"
-      c.shadowBlur = 40
-      c.fillStyle = "#ffd6a8"
-      c.beginPath()
-      c.arc(cx, cy + 60, 3 + 2 * pulse, 0, Math.PI * 2)
-      c.fill()
-      c.restore()
-
-      // 3–6 с: луч вверх, превращающийся в арку
-      if (t > 3) {
-        var k = Math.min(1, (t - 3) / 3)
+      // ФАЗА 1 (0–3 с): Сердце Бездны пульсирует всё чаще
+      if (t < 3) {
+        var accel = 1 + t * t * 0.8
+        var beat = 1 + 0.12 * Math.sin(t * 6 * accel)
         c.save()
-        c.globalAlpha = 0.25 + 0.35 * k
-        c.strokeStyle = "#c8a878"
-        c.lineWidth = 2 + 6 * k
+        var hg = c.createRadialGradient(cx, cy, 4, cx, cy, 70 * beat)
+        hg.addColorStop(0, "#000000")
+        hg.addColorStop(0.7, "#12000a")
+        hg.addColorStop(1, "rgba(138, 42, 42, 0.25)")
+        c.fillStyle = hg
+        c.beginPath()
+        c.arc(cx, cy, 70 * beat, 0, Math.PI * 2)
+        c.fill()
+        c.strokeStyle = "rgba(138, 42, 42, 0.85)"
+        c.lineWidth = 1.4
+        for (var ti = 0; ti < 9; ti++) {
+          var ta = (Math.PI * 2 * ti) / 9 + t * (1 + t)
+          c.beginPath()
+          c.moveTo(cx + Math.cos(ta) * 12, cy + Math.sin(ta) * 12)
+          c.lineTo(cx + Math.cos(ta) * 68, cy + Math.sin(ta) * 68)
+          c.stroke()
+        }
+        c.restore()
+      }
+
+      // взрыв на 2.5 с
+      if (t >= 2.5 && !exploded) {
+        exploded = true
+        flash = 1
+        boom()
+      }
+
+      // ФАЗА 2 (3–6 с): осколки разлетаются и застывают золотыми точками
+      for (var i = 0; i < stars.length; i++) {
+        var st = stars[i]
+        st.x += st.vx * 0.016
+        st.y += st.vy * 0.016
+        st.vx *= 0.975
+        st.vy *= 0.975
+        c.save()
         c.shadowColor = "#c8a878"
-        c.shadowBlur = 30
+        c.shadowBlur = 14
+        c.fillStyle = "#ffd6a8"
         c.beginPath()
-        c.moveTo(cx, cy + 58)
-        c.lineTo(cx, cy + 58 - 260 * k)
-        c.stroke()
-        c.beginPath()
-        c.arc(cx, cy + 60, 120 + 120 * k, Math.PI * 1.15, Math.PI * 1.85)
-        c.stroke()
+        c.arc(st.x, st.y, st.r, 0, Math.PI * 2)
+        c.fill()
         c.restore()
       }
 
-      // 6–10 с: город за аркой, камера ближе, финальный аккорд
-      if (t > 5) {
-        if (!chordDone && t > 6) {
+      // ФАЗА 3 (6–9 с): золотые линии собирают частицы в арку-портал
+      var portalR = t > 6 ? Math.min(210, 210 * ((t - 6) / 3)) : 0
+      if (t > 6) {
+        if (!chordDone && t > 6.2) {
           chordDone = true
-          tone(261, 0.05, 2.2)
-          tone(329, 0.045, 2.2)
-          tone(392, 0.04, 2.2)
-          playLayer()
+          chord([261, 329, 392, 523], 0.022, 1.4)
         }
-        var gk = Math.min(1, (t - 5) / 4)
         c.save()
-        c.globalAlpha = 0.15 + 0.55 * gk
-        c.translate(cx, cy + 20)
-        c.scale(1 + 0.35 * gk, 1 + 0.35 * gk)
-        for (var i = -9; i <= 9; i++) {
-          var bw = 14 + ((i * i) % 5) * 8
-          var bh = 40 + Math.abs(i) * 4 + ((i * 7) % 5) * 22
-          c.fillStyle = "rgba(20, 16, 30, 1)"
-          c.fillRect(i * 34 - bw / 2, -bh, bw, bh)
-          c.fillStyle = "rgba(200, 168, 120, " + (0.35 + 0.4 * gk).toFixed(2) + ")"
-          c.fillRect(i * 34 - 2, -bh + 6, 4, 4)
-        }
-        c.strokeStyle = "rgba(200, 168, 120, " + (0.2 + 0.3 * gk).toFixed(2) + ")"
+        c.globalAlpha = 0.35 + 0.25 * Math.sin(t * 3)
+        c.strokeStyle = "#c8a878"
         c.lineWidth = 1
+        for (var j = 0; j < stars.length; j += 3) {
+          c.beginPath()
+          c.moveTo(cx, cy)
+          c.lineTo(stars[j].x, stars[j].y)
+          c.stroke()
+        }
+        c.globalAlpha = 0.6
+        c.lineWidth = 2
         c.beginPath()
-        c.moveTo(-300, -30)
-        c.quadraticCurveTo(0, -90, 300, -30)
+        c.arc(cx, cy, portalR, 0, Math.PI * 2)
         c.stroke()
         c.restore()
       }
-
-      // 10–13 с: золотые строки
-      if (t > 10) {
-        var ak = Math.min(1, (t - 10) / 1.5)
+      // ФАЗА 4 (9–12 с): портал открывается, флагман входит
+      if (t > 9) {
+        portalOpen = Math.max(0, 1 - (t - 11.4) / 0.5)
+        var pg = c.createRadialGradient(cx, cy, 10, cx, cy, portalR * 0.95)
+        pg.addColorStop(0, "rgba(255, 240, 210, " + (0.85 * portalOpen).toFixed(2) + ")")
+        pg.addColorStop(0.6, "rgba(200, 168, 120, " + (0.5 * portalOpen).toFixed(2) + ")")
+        pg.addColorStop(1, "rgba(200, 168, 120, 0)")
         c.save()
+        c.fillStyle = pg
+        c.beginPath()
+        c.arc(cx, cy, portalR * 0.95 * portalOpen, 0, Math.PI * 2)
+        c.fill()
+        c.globalAlpha = 0.5
+        c.strokeStyle = "#fff5e0"
+        c.lineWidth = 2
+        for (var k2 = 0; k2 < 12; k2++) {
+          var ka = (Math.PI * 2 * k2) / 12 + t * 0.8
+          c.beginPath()
+          c.moveTo(cx + Math.cos(ka) * portalR * 0.3, cy + Math.sin(ka) * portalR * 0.3)
+          c.lineTo(cx + Math.cos(ka) * portalR, cy + Math.sin(ka) * portalR)
+          c.stroke()
+        }
+        c.restore()
+
+        // флагман слева → в портал
+        if (t < 11.5) shipX += 44
+        c.save()
+        c.shadowColor = "#c8a878"
+        c.shadowBlur = 24
+        c.fillStyle = "#f2eef8"
+        c.beginPath()
+        c.moveTo(shipX + 16, cy)
+        c.lineTo(shipX - 16, cy - 11)
+        c.lineTo(shipX - 6, cy)
+        c.lineTo(shipX - 16, cy + 11)
+        c.closePath()
+        c.fill()
+        c.globalAlpha = 0.4
+        c.fillStyle = "rgba(200, 168, 120, 0.5)"
+        c.fillRect(shipX - 90, cy - 4, 80, 8)
+        c.restore()
+
+        if (!swishDone && t > 11.4) {
+          swishDone = true
+          noiseHit(0.05, 0.5, 900)
+          tone(523, 0.03, 0.8)
+          flash = 0.8
+        }
+        if (!finalAccordDone && t > 11.6) {
+          finalAccordDone = true
+          chord([261, 329, 392, 523], 0.03, 1.6)
+        }
+      }
+
+      // вспышка (взрыв и закрытие портала)
+      if (flash > 0) {
+        c.save()
+        c.globalAlpha = flash * 0.8
+        c.fillStyle = "#fff5e0"
+        c.fillRect(0, 0, cv.width, cv.height)
+        c.restore()
+        flash = Math.max(0, flash - 0.05)
+      }
+      // ФАЗА 5 (12–15 с): золотой текст, салют, «Конец.»
+      if (t > 12) {
+        var ak = Math.min(1, (t - 12) / 1)
+        c.save()
+        c.globalAlpha = ak * 0.35
+        c.fillStyle = "#000"
+        c.fillRect(0, 0, cv.width, cv.height)
         c.globalAlpha = ak
         c.textAlign = "center"
         c.fillStyle = "#c8a878"
-        c.font = "48px 'Playfair Display', serif"
-        c.fillText("Тихий Гавань.", cx, cy - 40)
-        c.font = "28px 'Playfair Display', serif"
-        c.fillText("Ты дошёл.", cx, cy + 10)
-        c.font = "18px 'Inter', sans-serif"
+        c.font = "46px 'Playfair Display', serif"
+        c.fillText("Тихая Гавань.", cx, cy - 30)
+        c.font = "26px 'Playfair Display', serif"
+        c.fillText("Ты дошёл.", cx, cy + 16)
+        c.font = "17px 'Inter', sans-serif"
         c.fillStyle = "rgba(242, 238, 248, 0.75)"
-        c.fillText("— Двенадцатый Адмирал", cx, cy + 60)
+        c.fillText("— Двенадцатый Адмирал", cx, cy + 56)
         c.restore()
-      }
 
-      // 13–15 с: затухание, «Конец.», ambient уходит
-      if (t > 13) {
-        if (!fadeDone) {
+        if (!fireDone && t > 12.9) {
+          fireDone = true
+          chord([261, 329, 392], 0.02, 1.2)
+        }
+        if (t > 12.9 && Math.random() < 0.06) launchFirework()
+        if (!fadeDone && t > 13) {
           fadeDone = true
           stopAmbient(2)
         }
-        var fk = Math.min(1, (t - 13) / 2)
+      }
+
+      // салют: ракеты и искры
+      for (var si = sparks.length - 1; si >= 0; si--) {
+        var sk = sparks[si]
+        if (!sk.spark) {
+          sk.x += sk.vx * 0.016
+          sk.y += sk.vy * 0.016
+          sk.vy += 400 * 0.016
+          sk.fuse -= 0.016
+          c.save()
+          c.fillStyle = sk.color
+          c.beginPath()
+          c.arc(sk.x, sk.y, 2, 0, Math.PI * 2)
+          c.fill()
+          c.restore()
+          if (sk.fuse <= 0) {
+            burst(sk.x, sk.y, sk.color)
+            sparks.splice(si, 1)
+          }
+        } else {
+          sk.x += sk.vx * 0.016
+          sk.y += sk.vy * 0.016
+          sk.vy += 120 * 0.016
+          sk.life -= 0.012
+          c.save()
+          c.globalAlpha = Math.max(0, sk.life)
+          c.fillStyle = sk.color
+          c.beginPath()
+          c.arc(sk.x, sk.y, 1.8, 0, Math.PI * 2)
+          c.fill()
+          c.restore()
+          if (sk.life <= 0) sparks.splice(si, 1)
+        }
+      }
+
+      if (t > 14) {
         c.save()
-        c.globalAlpha = fk * 0.85
-        c.fillStyle = "#000"
-        c.fillRect(0, 0, cv.width, cv.height)
-        c.globalAlpha = fk
+        c.globalAlpha = Math.min(1, (t - 14) / 0.8)
         c.fillStyle = "#f2eef8"
         c.font = "22px 'Inter', sans-serif"
         c.textAlign = "center"
-        c.fillText("Конец.", cx, cy)
+        c.fillText("Конец.", cx, cy + 120)
         c.restore()
       }
 
@@ -1186,18 +1367,12 @@
     state.obstacles.push(o)
   }
 
-  function update(dt) {
-    if (state.paused) return
-    // бой с боссом: своя логика, обычный спавн отключён
-    if (state.boss) {
-      updateBoss(dt)
-      return
-    }
+  /** Управление флагманом — общее для обычных слоёв и для боёв с боссами. */
+  function updateShip(dt) {
     var s = state.ship
     var k = state.keys
     var ax = 0
     var ay = 0
-    // WASD (латиница и русская раскладка) + стрелки
     if (k["ArrowLeft"] || k["a"] || k["A"] || k["ф"] || k["Ф"]) ax -= 1
     if (k["ArrowRight"] || k["d"] || k["D"] || k["в"] || k["В"]) ax += 1
     if (k["ArrowUp"] || k["w"] || k["W"] || k["ц"] || k["Ц"]) ay -= 1
@@ -1242,14 +1417,25 @@
       s.vy = 0
     }
 
-    // топливо неумолимо тратится
     state.fuel -= dt * 0.5
     if (state.fuel <= 0) {
       state.fuel = 0
       updateHUD()
       endGame(false, "Топливо иссякло во тьме…")
+      return false
+    }
+    return true
+  }
+
+  function update(dt) {
+    if (state.paused) return
+    // бой с боссом: своя логика, обычный спавн отключён
+    if (state.boss) {
+      updateBoss(dt)
       return
     }
+    if (!updateShip(dt)) return
+    var s = state.ship
 
     // прогресс слоя: на 100% начинается бой с боссом (за ним — лорная записка)
     state.progress += dt * 3

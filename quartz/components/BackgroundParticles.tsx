@@ -40,6 +40,8 @@ BackgroundParticles.afterDOMLoaded = `
 
     const colorsLight = ["#6a5a8a", "#a85a7a", "#7a6a9a", "#8a7a5a"]
     const colorsDark = ["#b8a8d8", "#d89ab8", "#c8b8e8", "#d8c898"]
+    // PATCH (normcontrol-kb): на странице игры фон не реагирует на клики (рябь/вспышка не нужны)
+    const gamePage = (window.location.pathname || "").indexOf("echelon") !== -1
     function isDark() {
       return document.documentElement.getAttribute("saved-theme") === "dark"
     }
@@ -85,6 +87,8 @@ BackgroundParticles.afterDOMLoaded = `
       mouse.y = -1000
     }
     function onPointerDown(e) {
+      // на странице игры фон не шумит: клики по canvas обрабатывает сама игра
+      if (gamePage) return
       const x = typeof e.clientX === "number" ? e.clientX : mouse.x
       const y = typeof e.clientY === "number" ? e.clientY : mouse.y
 
