@@ -44,9 +44,6 @@ BackgroundParticles.afterDOMLoaded = `
     function currentColors() {
       return isDark() ? colorsDark : colorsLight
     }
-    function linePrefix() {
-      return isDark() ? "rgba(184, 168, 216, " : "rgba(106, 90, 138, "
-    }
 
     const PARTICLE_COUNT = 90
     const CONNECTION_DISTANCE = 120
@@ -75,7 +72,9 @@ BackgroundParticles.afterDOMLoaded = `
       return parts.length ? parts[parts.length - 1] : "index"
     }
     const isPlayground = document.body.dataset.slug === "playground" || urlSlug() === "playground"
-    if (isPlayground) canvas.style.zIndex = "1"
+    if (isPlayground) canvas.style.zIndex = "0"
+    // класс на body: страховка для CSS, если data-slug не успел обновиться при SPA-переходе
+    document.body.classList.toggle("is-playground", isPlayground)
 
     function showToast(text, emoji) {
       const toast = document.createElement("div")
@@ -151,6 +150,7 @@ BackgroundParticles.afterDOMLoaded = `
       if (bgClickCount >= 60) showPlaygroundButton()
       if (bgClickCount >= 100) document.body.classList.add("astronom-flight")
       showCollection()
+      showResetButton()
 
       if (!announce) return
       if (bgClickCount === 5) showToast("Линии между звёздами открыты", "✨")
@@ -168,6 +168,54 @@ BackgroundParticles.afterDOMLoaded = `
       try {
         localStorage.setItem(PROGRESS_KEY, String(bgClickCount))
       } catch (e) {}
+    }
+
+    /** Кнопка ↻ сброса прогресса: появляется, если что-то уже открыто или сохранено. */
+    function showResetButton() {
+      if (document.getElementById("astronom-reset")) return
+      let hasSaved = false
+      try {
+        hasSaved = !!localStorage.getItem(CONSTELLATIONS_KEY)
+      } catch (e) {}
+      if (bgClickCount <= 0 && !hasSaved) return
+      const btn = document.createElement("button")
+      btn.id = "astronom-reset"
+      btn.type = "button"
+      btn.textContent = "↻"
+      btn.title = "Сбросить прогресс Астронома"
+      btn.addEventListener("click", function(e) {
+        e.stopPropagation()
+        const sure = window.confirm(
+          "Сбросить весь прогресс Астронома? Будут удалены: открытые созвездия, сохранённые созвездия и счётчик кликов.",
+        )
+        if (!sure) return
+        if (!window.confirm("Точно? Это нельзя отменить.")) return
+        try {
+          localStorage.removeItem(PROGRESS_KEY)
+          localStorage.removeItem(CONSTELLATIONS_KEY)
+        } catch (err) {}
+        document.body.classList.remove(
+          "astronom-lines",
+          "astronom-owl",
+          "astronom-fox",
+          "astronom-bear",
+          "astronom-flight",
+        )
+        const pgBtn = document.getElementById("playground-btn")
+        if (pgBtn) pgBtn.remove()
+        const collection = document.getElementById("astronom-collection")
+        if (collection) collection.remove()
+        document.querySelectorAll(".astronom-toast").forEach(function(t) {
+          t.remove()
+        })
+        bgClickCount = 0
+        clearUserScene()
+        if (particles.length > 90) particles.length = 90
+        renderConstellationList()
+        btn.remove()
+        showToast("Прогресс сброшен", "↻")
+      })
+      document.body.appendChild(btn)
     }
 
     function isBackgroundClick(e) {
@@ -259,10 +307,13 @@ BackgroundParticles.afterDOMLoaded = `
       )
     }
 
-    // ===== Песочница (/playground): рисование созвездий =====
-    const drawLines = []
-    let isDrawing = false
-    let drawingFrom = null
+    // ===== Песочница (/playground): режимы, звёзды пользователя и связи =====
+    let playgroundMode = "free"
+    let userStars = []
+    let userLinks = []
+    let draggingFromStar = null
+    let previewLine = null
+    const pgCleanups = []
 
     function loadConstellations() {
       try {
@@ -274,54 +325,142 @@ BackgroundParticles.afterDOMLoaded = `
       }
     }
 
-    function findNearestStar(x, y) {
-      let best = null
-      let bestDist = Infinity
-      for (const p of particles) {
-        const d = Math.hypot(p.x - x, p.y - y)
-        if (d < bestDist) {
-          bestDist = d
-          best = p
-        }
+    function findStarAt(x, y, radius) {
+      const limit = radius || 20
+      for (let i = userStars.length - 1; i >= 0; i--) {
+        const star = userStars[i]
+        const dx = star.x - x
+        const dy = star.y - y
+        if (Math.sqrt(dx * dx + dy * dy) < limit) return star
       }
-      return bestDist < 120 ? best : null
+      return null
+    }
+
+    function setPlaygroundMode(mode) {
+      playgroundMode = mode === "draw" ? "draw" : "free"
+      const freeBtn = document.getElementById("mode-free")
+      const drawBtn = document.getElementById("mode-draw")
+      if (freeBtn) freeBtn.classList.toggle("active", playgroundMode === "free")
+      if (drawBtn) drawBtn.classList.toggle("active", playgroundMode === "draw")
+      draggingFromStar = null
+      previewLine = null
+    }
+
+    function clearUserScene() {
+      userStars = []
+      userLinks = []
+      draggingFromStar = null
+      previewLine = null
     }
 
     function onPgDown(e) {
-      if (!isPlayground || e.button !== 0) return
-      isDrawing = true
-      drawingFrom = findNearestStar(e.clientX, e.clientY) || { x: e.clientX, y: e.clientY }
-      drawLines.push({
-        points: [
-          { x: drawingFrom.x, y: drawingFrom.y },
-          { x: e.clientX, y: e.clientY },
-        ],
+      if (!isPlayground || playgroundMode !== "draw" || e.button !== 0) return
+      // клики по тексту и кнопкам не считаем
+      if (!isBackgroundClick(e)) return
+      const star = findStarAt(e.clientX, e.clientY)
+      if (star) {
+        // взялись за звезду — тянем связь
+        draggingFromStar = star
+        previewLine = { from: star, to: { x: e.clientX, y: e.clientY } }
+        return
+      }
+      // клик по пустому месту — новая звезда (с анимацией появления)
+      userStars.push({
+        x: e.clientX,
+        y: e.clientY,
+        id: Date.now() + Math.random(),
+        createdAt: performance.now(),
       })
     }
 
     function onPgMove(e) {
-      if (!isPlayground || !isDrawing || !drawLines.length) return
-      const line = drawLines[drawLines.length - 1]
-      line.points.push({ x: e.clientX, y: e.clientY })
+      if (!isPlayground || playgroundMode !== "draw" || !draggingFromStar) return
+      previewLine = { from: draggingFromStar, to: { x: e.clientX, y: e.clientY } }
     }
 
-    function onPgUp() {
-      isDrawing = false
-    }
-
-    function drawPlaygroundLines(ctx2) {
-      if (!drawLines.length) return
-      ctx2.save()
-      ctx2.lineWidth = 1.2
-      ctx2.strokeStyle = "rgba(200, 168, 120, 0.75)"
-      for (const line of drawLines) {
-        if (!line.points || line.points.length < 2) continue
-        ctx2.beginPath()
-        ctx2.moveTo(line.points[0].x, line.points[0].y)
-        for (let i = 1; i < line.points.length; i++) ctx2.lineTo(line.points[i].x, line.points[i].y)
-        ctx2.stroke()
+    function onPgUp(e) {
+      if (!isPlayground || playgroundMode !== "draw" || !draggingFromStar) return
+      const target = findStarAt(e.clientX, e.clientY)
+      if (target && target.id !== draggingFromStar.id) {
+        const from = draggingFromStar.id
+        const to = target.id
+        const exists = userLinks.some(function(l) {
+          return (l.from === from && l.to === to) || (l.from === to && l.to === from)
+        })
+        if (!exists) userLinks.push({ from: from, to: to })
       }
-      ctx2.restore()
+      draggingFromStar = null
+      previewLine = null
+    }
+
+    /** Отрисовка звёзд пользователя, их связей и пунктирного предпросмотра. */
+    function drawPlaygroundScene(ctx2) {
+      const now = performance.now()
+
+      // связи между звёздами
+      for (const link of userLinks) {
+        const a = userStars.find(function(s) {
+          return s.id === link.from
+        })
+        const b = userStars.find(function(s) {
+          return s.id === link.to
+        })
+        if (!a || !b) continue
+        ctx2.save()
+        ctx2.shadowColor = "#c8a878"
+        ctx2.shadowBlur = 10
+        ctx2.strokeStyle = "rgba(200, 168, 120, 0.7)"
+        ctx2.lineWidth = 1.5
+        ctx2.beginPath()
+        ctx2.moveTo(a.x, a.y)
+        ctx2.lineTo(b.x, b.y)
+        ctx2.stroke()
+        ctx2.restore()
+      }
+
+      // предпросмотр новой связи — пунктир
+      if (previewLine) {
+        ctx2.save()
+        ctx2.shadowColor = "#8a7ab8"
+        ctx2.shadowBlur = 12
+        ctx2.strokeStyle = "rgba(138, 122, 184, 0.6)"
+        ctx2.lineWidth = 1
+        ctx2.setLineDash([4, 4])
+        ctx2.beginPath()
+        ctx2.moveTo(previewLine.from.x, previewLine.from.y)
+        ctx2.lineTo(previewLine.to.x, previewLine.to.y)
+        ctx2.stroke()
+        ctx2.restore()
+      }
+
+      // звёзды пользователя с анимацией появления и вспышкой
+      for (const star of userStars) {
+        const age = (now - star.createdAt) / 1000
+        const appearScale = age < 0.3 ? age / 0.3 : 1
+        const flashOpacity = age < 0.15 ? 1 - age / 0.15 : 0
+        ctx2.save()
+        if (flashOpacity > 0) {
+          ctx2.globalAlpha = flashOpacity * 0.5
+          ctx2.fillStyle = "#c8a878"
+          ctx2.shadowColor = "#c8a878"
+          ctx2.shadowBlur = 40
+          ctx2.beginPath()
+          ctx2.arc(star.x, star.y, 25 * flashOpacity, 0, Math.PI * 2)
+          ctx2.fill()
+        }
+        ctx2.globalAlpha = 1
+        ctx2.shadowColor = "#c8a878"
+        ctx2.shadowBlur = 20
+        ctx2.fillStyle = "#f2eef8"
+        ctx2.beginPath()
+        ctx2.arc(star.x, star.y, 5 * appearScale, 0, Math.PI * 2)
+        ctx2.fill()
+        ctx2.fillStyle = "#c8a878"
+        ctx2.beginPath()
+        ctx2.arc(star.x, star.y, 2.5 * appearScale, 0, Math.PI * 2)
+        ctx2.fill()
+        ctx2.restore()
+      }
     }
 
     function renderConstellationList() {
@@ -329,77 +468,90 @@ BackgroundParticles.afterDOMLoaded = `
       if (!container) return
       container.textContent = ""
       const saved = loadConstellations()
-      if (!saved.length) {
-        const empty = document.createElement("p")
-        empty.textContent = "Пока пусто — нарисуй первую линию и нажми «Сохранить»."
-        container.appendChild(empty)
-        return
-      }
+      // пусто — подсказку рисует CSS через :empty::after
+      if (!saved.length) return
       for (const c of saved) {
+        const count = c.stars ? c.stars.length : c.lines ? c.lines.length : 0
         const div = document.createElement("div")
-        div.textContent = "✨ " + c.name + (c.lines ? " — линий: " + c.lines.length : "")
+        div.textContent = "✨ " + c.name + (count ? " — звёзд: " + count : "")
         container.appendChild(div)
       }
     }
 
-    function saveConstellation() {
-      if (!drawLines.length) {
-        showToast("Сначала нарисуй линию", "✏️")
+    function saveUserConstellation() {
+      if (userStars.length < 2) {
+        showToast("Нужно минимум 2 звезды", "✨")
         return
       }
       const name = window.prompt("Как назовёшь своё созвездие?")
       if (!name) return
       const saved = loadConstellations()
-      saved.push({ name: name, lines: JSON.parse(JSON.stringify(drawLines)), createdAt: Date.now() })
+      saved.push({
+        name: name,
+        stars: JSON.parse(JSON.stringify(userStars)),
+        links: JSON.parse(JSON.stringify(userLinks)),
+        createdAt: Date.now(),
+      })
       try {
         localStorage.setItem(CONSTELLATIONS_KEY, JSON.stringify(saved))
       } catch (e) {}
       showToast("Созвездие «" + name + "» сохранено", "✨")
       renderConstellationList()
+      showResetButton()
     }
 
-    function randomConstellation() {
-      drawLines.length = 0
-      let prev = null
-      for (let i = 0; i < 6; i++) {
-        const star = particles[Math.floor(Math.random() * particles.length)]
-        if (prev) drawLines.push({ points: [{ x: prev.x, y: prev.y }, { x: star.x, y: star.y }] })
-        prev = star
-      }
-      showToast("Случайное созвездие готово", "🎲")
+    /** Навешивает обработчик на кнопку песочницы и запоминает снятие для cleanup(). */
+    function onPgControl(el, handler) {
+      if (!el) return
+      el.addEventListener("click", handler)
+      pgCleanups.push(function() {
+        el.removeEventListener("click", handler)
+      })
     }
 
-    function buildPlaygroundPanel() {
+    /** Кнопки режимов и список созвездий: вызывается при каждом запуске (в т.ч. после SPA-перехода). */
+    function setupPlaygroundControls() {
       if (!isPlayground) return
       const article = document.querySelector("article")
-      if (!article || document.getElementById("pg-panel")) return
-      const panel = document.createElement("div")
-      panel.id = "pg-panel"
-      const mk = function(id, label) {
-        const b = document.createElement("button")
-        b.id = id
-        b.type = "button"
-        b.textContent = label
-        return b
+      if (!article) return
+      let controls = document.getElementById("playground-controls")
+      // если разметка не дала контролы — создаём сами
+      if (!controls) {
+        controls = document.createElement("div")
+        controls.id = "playground-controls"
+        const mk = function(id, label) {
+          const b = document.createElement("button")
+          b.id = id
+          b.type = "button"
+          b.textContent = label
+          controls.appendChild(b)
+          return b
+        }
+        mk("mode-free", "🌌 Свободный")
+        mk("mode-draw", "✨ Рисование")
+        mk("btn-clear", "🗑 Очистить")
+        mk("btn-save", "💾 Сохранить")
+        article.insertBefore(controls, article.firstChild)
       }
-      const save = mk("pg-save", "💾 Сохранить")
-      const reset = mk("pg-reset", "🧹 Сброс")
-      const rand = mk("pg-random", "🎲 Случайное")
-      panel.appendChild(save)
-      panel.appendChild(reset)
-      panel.appendChild(rand)
-      article.appendChild(panel)
-      save.addEventListener("click", saveConstellation)
-      reset.addEventListener("click", function() {
-        drawLines.length = 0
-      })
-      rand.addEventListener("click", randomConstellation)
-      // если разметка страницы не дала контейнер — создаём его сами
       if (!document.getElementById("my-constellations")) {
         const list = document.createElement("div")
         list.id = "my-constellations"
         article.appendChild(list)
       }
+
+      setPlaygroundMode(playgroundMode)
+      onPgControl(document.getElementById("mode-free"), function() {
+        setPlaygroundMode("free")
+      })
+      onPgControl(document.getElementById("mode-draw"), function() {
+        setPlaygroundMode("draw")
+      })
+      onPgControl(document.getElementById("btn-clear"), function() {
+        if (!userStars.length && !userLinks.length) return
+        if (!window.confirm("Очистить всё?")) return
+        clearUserScene()
+      })
+      onPgControl(document.getElementById("btn-save"), saveUserConstellation)
       renderConstellationList()
     }
 
@@ -436,21 +588,22 @@ BackgroundParticles.afterDOMLoaded = `
       if (x < -500) return
       mouse.x = x
       mouse.y = y
-      ripple.x = x
-      ripple.y = y
-      ripple.life = 1
-      flashes.push({ x: x, y: y, life: 1 })
-      pushTrail()
 
       // прогресс «Астронома»: считаем только клики по фону
       if (isBackgroundClick(e)) {
         bgClickCount++
         saveProgress()
         applyProgress(true)
-        // клик по фону — только визуально (рябь + вспышка), без звука
-        // на песочнице клик по фону добавляет звезду
-        if (isPlayground) particles.push(makeStar(x, y))
       }
+
+      // в режиме «Рисование» клик создаёт звезду (это делает onPgDown), а не взрыв
+      if (isPlayground && playgroundMode === "draw") return
+
+      ripple.x = x
+      ripple.y = y
+      ripple.life = 1
+      flashes.push({ x: x, y: y, life: 1 })
+      pushTrail()
     }
     function onTouchStart(e) {
       if (e.touches && e.touches.length > 0) {
@@ -542,36 +695,51 @@ BackgroundParticles.afterDOMLoaded = `
       for (const t of trail) t.life -= 0.03
       for (let i = trail.length - 1; i >= 0; i--) if (trail[i].life <= 0) trail.splice(i, 1)
 
+      // в режиме «Рисование» частицы не реагируют на курсор — звёзды можно соединять
+      const drawingMode = isPlayground && playgroundMode === "draw"
+
       for (const p of particles) {
         p.pulsePhase += p.pulseSpeed
         p.r = p.baseR * (1 + Math.sin(p.pulsePhase) * 0.25)
 
-        const dx = p.x - mouse.x
-        const dy = p.y - mouse.y
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist < MOUSE_RADIUS && dist > 0) {
-          const force = ((MOUSE_RADIUS - dist) / MOUSE_RADIUS) * MOUSE_REPEL
-          p.vx += (dx / dist) * force * 0.1
-          p.vy += (dy / dist) * force * 0.1
-        }
+        if (!drawingMode) {
+          const dx = p.x - mouse.x
+          const dy = p.y - mouse.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < MOUSE_RADIUS && dist > 0) {
+            const force = ((MOUSE_RADIUS - dist) / MOUSE_RADIUS) * MOUSE_REPEL
+            p.vx += (dx / dist) * force * 0.1
+            p.vy += (dy / dist) * force * 0.1
+          }
 
-        if (ripple.life > 0) {
-          const rdx = p.x - ripple.x
-          const rdy = p.y - ripple.y
-          const rd = Math.sqrt(rdx * rdx + rdy * rdy)
-          if (rd < RIPPLE_RADIUS && rd > 0) {
-            const rf = (1 - rd / RIPPLE_RADIUS) * ripple.life * RIPPLE_FORCE
-            p.vx += (rdx / rd) * rf * 0.1
-            p.vy += (rdy / rd) * rf * 0.1
+          if (ripple.life > 0) {
+            const rdx = p.x - ripple.x
+            const rdy = p.y - ripple.y
+            const rd = Math.sqrt(rdx * rdx + rdy * rdy)
+            if (rd < RIPPLE_RADIUS && rd > 0) {
+              const rf = (1 - rd / RIPPLE_RADIUS) * ripple.life * RIPPLE_FORCE
+              p.vx += (rdx / rd) * rf * 0.1
+              p.vy += (rdy / rd) * rf * 0.1
+            }
           }
         }
 
-        p.x += p.vx
-        p.y += p.vy
-        p.vx *= 0.98
-        p.vy *= 0.98
-        if (Math.abs(p.vx) < 0.05) p.vx += (Math.random() - 0.5) * 0.1
-        if (Math.abs(p.vy) < 0.05) p.vy += (Math.random() - 0.5) * 0.1
+        if (drawingMode) {
+          // плавное затухание: звёзды почти стоят на месте
+          p.vx *= 0.97
+          p.vy *= 0.97
+          if (Math.abs(p.vx) < 0.02) p.vx = 0
+          if (Math.abs(p.vy) < 0.02) p.vy = 0
+          p.x += p.vx
+          p.y += p.vy
+        } else {
+          p.x += p.vx
+          p.y += p.vy
+          p.vx *= 0.98
+          p.vy *= 0.98
+          if (Math.abs(p.vx) < 0.05) p.vx += (Math.random() - 0.5) * 0.1
+          if (Math.abs(p.vy) < 0.05) p.vy += (Math.random() - 0.5) * 0.1
+        }
         p.y -= scrollDelta * 0.15
         if (p.x < 0) p.x = w
         if (p.x > w) p.x = 0
@@ -579,24 +747,9 @@ BackgroundParticles.afterDOMLoaded = `
         if (p.y > h) p.y = 0
       }
 
-      ctx.strokeStyle = "rgba(138, 122, 184, " + (bgClickCount >= 5 ? 0.12 : 0.08) + ")"
-      ctx.lineWidth = 0.4
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const a = particles[i]
-          const b = particles[j]
-          const dx = a.x - b.x
-          const dy = a.y - b.y
-          if (Math.abs(dx) > CONNECTION_DISTANCE || Math.abs(dy) > CONNECTION_DISTANCE) continue
-          if (Math.sqrt(dx * dx + dy * dy) < CONNECTION_DISTANCE) {
-            ctx.beginPath()
-            ctx.moveTo(a.x, a.y)
-            ctx.lineTo(b.x, b.y)
-            ctx.stroke()
-          }
-        }
-      }
-
+      // Светящиеся линии: слой 1 — лавандовое свечение, слой 2 — золотое ядро
+      // (shadowBlur дорогой, поэтому при 200 частицах в «свободном полёте» рисуем без него)
+      const useLineGlow = particles.length <= 120
       for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
           const a = particles[i]
@@ -606,15 +759,65 @@ BackgroundParticles.afterDOMLoaded = `
           if (Math.abs(dx) > CONNECTION_DISTANCE || Math.abs(dy) > CONNECTION_DISTANCE) continue
           const d = Math.sqrt(dx * dx + dy * dy)
           if (d >= CONNECTION_DISTANCE) continue
-          const aNear = Math.hypot(a.x - mouse.x, a.y - mouse.y) < MOUSE_RADIUS
-          const bNear = Math.hypot(b.x - mouse.x, b.y - mouse.y) < MOUSE_RADIUS
-          if (!aNear && !bNear) continue
-          ctx.strokeStyle = linePrefix() + (1 - d / CONNECTION_DISTANCE) * 0.25 + ")"
+          // чем ближе звёзды — тем ярче линия
+          const fade = Math.pow(1 - d / CONNECTION_DISTANCE, 1.5)
+
+          ctx.save()
+          ctx.lineCap = "round"
+          if (useLineGlow) {
+            ctx.shadowColor = "#8a7ab8"
+            ctx.shadowBlur = 8
+          }
+          ctx.strokeStyle = "rgba(138, 122, 184, " + 0.15 * fade + ")"
+          ctx.lineWidth = 1.5
+          ctx.beginPath()
+          ctx.moveTo(a.x, a.y)
+          ctx.lineTo(b.x, b.y)
+          ctx.stroke()
+          ctx.restore()
+
+          ctx.save()
+          if (useLineGlow) {
+            ctx.shadowColor = "#c8a878"
+            ctx.shadowBlur = 4
+          }
+          ctx.strokeStyle = "rgba(200, 168, 120, " + 0.35 * fade + ")"
           ctx.lineWidth = 0.6
           ctx.beginPath()
           ctx.moveTo(a.x, a.y)
           ctx.lineTo(b.x, b.y)
           ctx.stroke()
+          ctx.restore()
+        }
+      }
+
+      // Линии у курсора — розовое свечение (в режиме рисования не подсвечиваем)
+      if (!drawingMode) {
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const a = particles[i]
+            const b = particles[j]
+            const dx = a.x - b.x
+            const dy = a.y - b.y
+            if (Math.abs(dx) > CONNECTION_DISTANCE || Math.abs(dy) > CONNECTION_DISTANCE) continue
+            const d = Math.sqrt(dx * dx + dy * dy)
+            if (d >= CONNECTION_DISTANCE) continue
+            const aNear = Math.hypot(a.x - mouse.x, a.y - mouse.y) < MOUSE_RADIUS
+            const bNear = Math.hypot(b.x - mouse.x, b.y - mouse.y) < MOUSE_RADIUS
+            if (!aNear && !bNear) continue
+            const fade = 1 - d / CONNECTION_DISTANCE
+            ctx.save()
+            ctx.lineCap = "round"
+            ctx.shadowColor = "#b86a8a"
+            ctx.shadowBlur = 15
+            ctx.strokeStyle = "rgba(184, 106, 138, " + 0.5 * fade + ")"
+            ctx.lineWidth = 1
+            ctx.beginPath()
+            ctx.moveTo(a.x, a.y)
+            ctx.lineTo(b.x, b.y)
+            ctx.stroke()
+            ctx.restore()
+          }
         }
       }
 
@@ -646,11 +849,11 @@ BackgroundParticles.afterDOMLoaded = `
         ctx.stroke()
       }
 
-      // созвездия «Астронома» и линии песочницы
+      // созвездия «Астронома» и сцена песочницы
       if (bgClickCount >= 15) drawConstellationOwl(ctx, w, h)
       if (bgClickCount >= 30) drawConstellationFox(ctx, w, h)
       if (bgClickCount >= 45) drawConstellationBear(ctx, w, h)
-      if (isPlayground) drawPlaygroundLines(ctx)
+      if (isPlayground) drawPlaygroundScene(ctx)
 
       for (const p of particles) {
         const distM = Math.hypot(p.x - mouse.x, p.y - mouse.y)
@@ -658,7 +861,7 @@ BackgroundParticles.afterDOMLoaded = `
         const distSel = Math.hypot(p.x - selectionCenter.x, p.y - selectionCenter.y)
         const selBoost = distSel < SELECTION_RADIUS ? (1 - distSel / SELECTION_RADIUS) * 0.4 : 0
 
-        if (glowAmount > 0) {
+        if (!drawingMode && glowAmount > 0) {
           ctx.globalAlpha = glowAmount * GLOW_ALPHA
           ctx.fillStyle = p.color
           ctx.beginPath()
@@ -693,11 +896,13 @@ BackgroundParticles.afterDOMLoaded = `
       window.removeEventListener("mousemove", onPgMove)
       window.removeEventListener("mousedown", onPgDown)
       window.removeEventListener("mouseup", onPgUp)
+      for (const fn of pgCleanups) fn()
+      pgCleanups.length = 0
     }
 
-    // прогресс и панель песочницы: применяем при каждом запуске (в том числе после SPA-перехода)
+    // прогресс и контролы песочницы: применяем при каждом запуске (в том числе после SPA-перехода)
     applyProgress(false)
-    buildPlaygroundPanel()
+    setupPlaygroundControls()
   }
 
   // fade-in контента при SPA-переходах: перезапускаем переход через класс

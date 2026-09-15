@@ -727,66 +727,177 @@ th {
   border-color: #2a2440;
 }
 
-/* панель песочницы (создаётся скриптом) */
-#pg-panel {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin: 1.5rem 0;
-}
-
-#pg-panel button {
-  font: inherit;
-  font-size: 0.9rem;
-  padding: 0.5rem 0.9rem;
-  border-radius: 8px;
+/* кнопка сброса прогресса Астронома */
+#astronom-reset {
+  position: fixed;
+  bottom: 2rem;
+  right: 8rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(242, 238, 248, 0.7);
   border: 1px solid #e0d8ec;
-  background: #f2eef8;
-  color: #2e2840;
+  color: #8a7f9a;
+  font-size: 1rem;
   cursor: pointer;
+  z-index: 50;
+  opacity: 0.5;
   transition:
-    background 0.2s ease,
-    border-color 0.2s ease;
+    opacity 0.2s ease,
+    transform 0.3s ease,
+    background 0.2s ease;
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
 }
 
-#pg-panel button:hover {
-  background: #8a7ab8;
-  border-color: #6a5a8a;
+#astronom-reset:hover {
+  opacity: 1;
+  background: #b86a8a;
   color: #f2eef8;
+  transform: rotate(-180deg);
 }
 
-[saved-theme="dark"] #pg-panel button {
-  background: #2a2440;
+[saved-theme="dark"] #astronom-reset {
+  background: rgba(26, 22, 38, 0.7);
+  border-color: #2a2440;
+  color: #8a7f9a;
+}
+
+[saved-theme="dark"] #astronom-reset:hover {
+  background: #d89ab8;
+  color: #1a1626;
+}
+
+/* панель песочницы (создаётся скриптом) */
+/* кнопки режимов песочницы */
+#playground-controls {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 20;
+}
+
+#playground-controls button {
+  padding: 0.6rem 1.2rem;
+  border-radius: 24px;
+  border: 1px solid #e0d8ec;
+  background: rgba(242, 238, 248, 0.9);
+  color: #3a3448;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+#playground-controls button.active {
+  background: #8a7ab8;
+  color: #f2eef8;
+  border-color: #8a7ab8;
+  box-shadow: 0 4px 12px rgba(138, 122, 184, 0.3);
+}
+
+#playground-controls button:hover:not(.active) {
+  background: rgba(242, 238, 248, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(138, 122, 184, 0.15);
+}
+
+[saved-theme="dark"] #playground-controls button {
+  background: rgba(26, 22, 38, 0.9);
   border-color: #2a2440;
   color: #e8e0f2;
 }
 
+[saved-theme="dark"] #playground-controls button.active {
+  background: #b8a8d8;
+  color: #1a1626;
+  border-color: #b8a8d8;
+}
+
+/* список сохранённых созвездий */
 #my-constellations {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: rgba(242, 238, 248, 0.6);
+  border-radius: 12px;
+  min-height: 60px;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  margin-top: 0.5rem;
   font-size: 0.95rem;
 }
 
-/* страница песочницы: частицы выходят на передний план, текст — в «карточке» */
-body[data-slug="playground"] #bg-particles {
-  z-index: 1;
+#my-constellations:empty::after {
+  content: "Пока пусто. Создай первое созвездие!";
+  color: #8a7f9a;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+[saved-theme="dark"] #my-constellations {
+  background: rgba(26, 22, 38, 0.6);
+}
+
+/* ===== Песочница: прячем граф и правый сайдбар ===== */
+body[data-slug="playground"] .graph-container,
+body[data-slug="playground"] .graph-outer,
+body[data-slug="playground"] .global-graph-outer,
+body[data-slug="playground"] .sidebar.right,
+body.is-playground .graph-container,
+body.is-playground .graph-outer,
+body.is-playground .global-graph-outer,
+body.is-playground .sidebar.right {
+  display: none !important;
+}
+
+/* сетка страницы: две колонки вместо трёх, иначе справа останется пустая колонка 320px */
+body[data-slug="playground"] .page > #quartz-body,
+body.is-playground .page > #quartz-body {
+  position: relative;
+  z-index: 10;
+  grid-template-columns: auto 1fr !important;
+  grid-template-areas:
+    "grid-sidebar-left grid-header"
+    "grid-sidebar-left grid-center"
+    "grid-sidebar-left grid-footer" !important;
+}
+
+body[data-slug="playground"] .center,
+body.is-playground .center {
+  max-width: 100%;
+  padding-right: 1rem;
+}
+
+/* canvas под контентом, кнопки и текст — поверх */
+body[data-slug="playground"] #bg-particles,
+body.is-playground #bg-particles {
+  z-index: 0;
   opacity: 1;
 }
 
-body[data-slug="playground"] article {
+/* статья песочницы */
+body[data-slug="playground"] article,
+body.is-playground article {
   position: relative;
   z-index: 10;
   background: rgba(242, 238, 248, 0.85);
   backdrop-filter: blur(6px);
   border-radius: 12px;
   padding: 2rem;
-  max-width: 600px;
+  max-width: 800px;
   margin: 4rem auto;
 }
 
-[saved-theme="dark"] body[data-slug="playground"] article {
+[saved-theme="dark"] body[data-slug="playground"] article,
+[saved-theme="dark"] body.is-playground article {
   background: rgba(26, 22, 38, 0.85);
 }
 
