@@ -26,6 +26,16 @@ export function provider(env) {
   const key = (env.LLM_API_KEY || "").trim()
   let name = (env.LLM_PROVIDER || "").toLowerCase().trim()
 
+  // PATCH (normcontrol-kb): вычищаем из логов всё, что может содержать ключ API
+  const scrub = (text) =>
+    String(text || "")
+      .replace(/([?&](?:key|api_key|api-key|apikey|token|access_token)=)[^&\s"']+/gi, "$1***")
+      .replace(/\b(sk-[A-Za-z0-9_-]{4})[A-Za-z0-9_-]{6,}/g, "$1***")
+      .replace(/\b(gsk_[A-Za-z0-9]{4})[A-Za-z0-9]{6,}/g, "$1***")
+      .replace(/\b(AIza[A-Za-z0-9_-]{4})[A-Za-z0-9_-]{6,}/g, "$1***")
+      .replace(/(Bearer\s+)[A-Za-z0-9._-]{8,}/gi, "$1***")
+      .slice(0, 160)
+
   const hostOf = (u) => {
     try {
       return new URL(u).hostname
@@ -117,7 +127,7 @@ export async function askAI(ctx) {
         }),
       })
       if (!r.ok) {
-        console.log(`LLM ${model}: HTTP ${r.status} ${(await r.text()).slice(0, 160)}`)
+        console.log(`LLM ${model}: HTTP ${r.status} ${scrub(await r.text())}`)
         continue
       }
       const j = await r.json()
@@ -128,7 +138,7 @@ export async function askAI(ctx) {
       }
       console.log(`LLM ${model}: ответ не разобран`)
     } catch (err) {
-      console.log(`LLM ${model}: ${err.message}`)
+      console.log(`LLM ${model}: ${scrub(err.message)}`)
     }
   }
   return null
