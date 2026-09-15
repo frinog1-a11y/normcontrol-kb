@@ -50,10 +50,7 @@ tags: [инструкция, помощь]
 
 Или на доске — задача проходит три колонки: **To Do** (ждёт обработки) → **In Progress** (ИИ работает) → **Done** (готово):
 
-<a href="https://github.com/frinog1-a11y/normcontrol-kb/projects" target="_blank" rel="noopener">🗂 Доска задач</a>
-
-<!-- PATCH (normcontrol-kb): когда доска создана, заменить ссылку на точный URL вида
-     https://github.com/users/frinog1-a11y/projects/1 -->
+<a href="https://github.com/users/frinog1-a11y/projects/1" target="_blank" rel="noopener">🗂 Доска задач</a>
 
 ## Если ИИ ошибся
 

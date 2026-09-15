@@ -87,10 +87,7 @@ npx prettier --check .
 2. Нажми «✏ Создать задачу».
 3. Заполни одно поле своими словами — ИИ создаст заметку и опубликует её.
 4. Посмотреть все задачи: [Issues](https://github.com/frinog1-a11y/normcontrol-kb/issues)
-5. Визуальная доска: [Projects](https://github.com/frinog1-a11y/normcontrol-kb/projects) — новые задачи попадают в **To Do**, обработанные уходят в **Done**.
-
-<!-- PATCH (normcontrol-kb): когда доска создана, заменить ссылку Projects на точный URL вида
-     https://github.com/users/frinog1-a11y/projects/1 -->
+5. Визуальная доска: [База: задачи](https://github.com/users/frinog1-a11y/projects/1) — новые задачи попадают в **To Do**, после обработки уходят в **In Progress** и **Done**.
 
 ## Как добавить материал
 
