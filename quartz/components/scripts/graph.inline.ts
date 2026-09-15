@@ -52,6 +52,14 @@ type NodeRenderData = GraphicsInfo & {
   label: Text
 }
 
+// PATCH (normcontrol-kb): параметры анимаций графа
+const HUB_LINKS = 5
+const APPEAR_MS = 600
+const ZOOM_TO_NODE_MS = 300
+const SWAY_STEP = 0.005
+const SWAY_AMPLITUDE = 0.5
+const PULL_DISTANCE = 4
+
 const localStorageKey = "graph-visited"
 function getVisited(): Set<SimpleSlug> {
   return new Set(JSON.parse(localStorage.getItem(localStorageKey) ?? "[]"))
@@ -237,6 +245,27 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
     return "#8a80a0"
   }
 
+  // PATCH (normcontrol-kb): заранее считаем степени узлов, соседей и хабы —
+  // нужно для анимаций, чтобы не пересчитывать связи в каждом кадре
+  const linkDegrees = new Map<string, number>()
+  const neighbourIds = new Map<string, Set<string>>()
+  for (const node of graphData.nodes) {
+    linkDegrees.set(node.id, 0)
+    neighbourIds.set(node.id, new Set())
+  }
+  for (const l of graphData.links) {
+    linkDegrees.set(l.source.id, (linkDegrees.get(l.source.id) ?? 0) + 1)
+    linkDegrees.set(l.target.id, (linkDegrees.get(l.target.id) ?? 0) + 1)
+    neighbourIds.get(l.source.id)?.add(l.target.id)
+    neighbourIds.get(l.target.id)?.add(l.source.id)
+  }
+  const hubIds = new Set(
+    [...linkDegrees.entries()].filter(([, degree]) => degree >= HUB_LINKS).map(([id]) => id),
+  )
+  const nodesById = new Map(graphData.nodes.map((node) => [node.id, node]))
+  const appearDelays = new Map<string, number>()
+  const appearStart = performance.now()
+
   // calculate color
   const color = (d: NodeData) => {
     const isCurrent = d.id === slug
@@ -301,13 +330,8 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
     const tweenGroup = new TweenGroup()
 
     for (const l of linkRenderData) {
-      let alpha = 1
-
-      // if we are hovering over a node, we want to highlight the immediate neighbours
-      // with full alpha and the rest with default alpha
-      if (hoveredNodeId) {
-        alpha = l.active ? 1 : 0.2
-      }
+      // PATCH (normcontrol-kb): в покое связи полупрозрачные, при наведении активные ярче
+      let alpha = hoveredNodeId ? (l.active ? 0.9 : 0.06) : 0.22
 
       l.color = l.active ? computedStyleMap["--gray"] : computedStyleMap["--lightgray"]
       tweenGroup.add(new Tweened<LinkRenderData>(l).to({ alpha }, 200))
@@ -331,7 +355,8 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
     for (const n of nodeRenderData) {
       const nodeId = n.simulationData.id
 
-      if (hoveredNodeId === nodeId) {
+      // PATCH (normcontrol-kb): подписи показываются и у соседей узла под курсором
+      if (hoveredNodeId === nodeId || (hoveredNodeId !== null && hoveredNeighbours.has(nodeId))) {
         tweenGroup.add(
           new Tweened<Text>(n.label).to(
             {
@@ -372,7 +397,7 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
 
       // if we are hovering over a node, we want to highlight the immediate neighbours
       if (hoveredNodeId !== null && focusOnHover) {
-        alpha = n.active ? 1 : 0.2
+        alpha = n.active ? 1 : 0.15
       }
 
       tweenGroup.add(new Tweened<Graphics>(n.gfx, tweenGroup).to({ alpha }, 200))
@@ -418,6 +443,7 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
   const linkContainer = new Container<Graphics>({ zIndex: 1, isRenderGroup: true })
   stage.addChild(nodesContainer, labelsContainer, linkContainer)
 
+  let appearCounter = 0
   for (const n of graphData.nodes) {
     const nodeId = n.id
 
@@ -436,6 +462,9 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
       resolution: window.devicePixelRatio * 4,
     })
     label.scale.set(1 / scale)
+    // PATCH (normcontrol-kb): «волна» появления — задержка по порядку узлов
+    appearDelays.set(nodeId, Math.min(appearCounter * 8, APPEAR_MS))
+    appearCounter++
 
     let oldLabelOpacity = 0
     const isTagNode = nodeId.startsWith("tags/")
@@ -451,8 +480,7 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
       .on("pointerover", (e) => {
         updateHoverInfo(e.target.label)
         oldLabelOpacity = label.alpha
-        // PATCH (normcontrol-kb): узел под курсором чуть увеличивается
-        gfx.scale.set(1.3)
+        // масштаб узла под курсором ведёт animate (чтобы не конфликтовать с пульсацией хабов)
         if (!dragging) {
           renderPixiFromD3()
         }
@@ -460,7 +488,6 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
       .on("pointerleave", () => {
         updateHoverInfo(null)
         label.alpha = oldLabelOpacity
-        gfx.scale.set(1)
         if (!dragging) {
           renderPixiFromD3()
         }
@@ -475,6 +502,10 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
       // PATCH (normcontrol-kb): лёгкая обводка, чтобы узел читался на светлом фоне
       gfx.stroke({ width: 1, color: "rgba(46, 40, 64, 0.25)" })
     }
+
+    // PATCH (normcontrol-kb): старт «волны» появления — масштаб и прозрачность ведёт animate
+    gfx.scale.set(0.01)
+    gfx.alpha = 0
 
     nodesContainer.addChild(gfx)
     labelsContainer.addChild(label)
@@ -539,54 +570,145 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
           // if the time between mousedown and mouseup is short, we consider it a click
           if (Date.now() - dragStartTime < 500) {
             const node = graphData.nodes.find((n) => n.id === event.subject.id) as NodeData
-            const targ = resolveRelative(fullSlug, node.id)
-            window.spaNavigate(new URL(targ, window.location.toString()))
+            navigateToNode(node)
           }
         }),
     )
   } else {
     for (const node of nodeRenderData) {
       node.gfx.on("click", () => {
-        const targ = resolveRelative(fullSlug, node.simulationData.id)
-        window.spaNavigate(new URL(targ, window.location.toString()))
+        navigateToNode(node.simulationData)
       })
     }
   }
 
-  if (enableZoom) {
-    select<HTMLCanvasElement, NodeData>(app.canvas).call(
-      zoom<HTMLCanvasElement, NodeData>()
-        .extent([
-          [0, 0],
-          [width, height],
-        ])
-        .scaleExtent([0.25, 4])
-        .on("zoom", ({ transform }) => {
-          currentTransform = transform
-          stage.scale.set(transform.k, transform.k)
-          stage.position.set(transform.x, transform.y)
+  // PATCH (normcontrol-kb): поведение зума вынесено в переменную — её использует плавный зум к узлу
+  const zoomBehavior = zoom<HTMLCanvasElement, NodeData>()
+    .extent([
+      [0, 0],
+      [width, height],
+    ])
+    .scaleExtent([0.25, 4])
+    .on("zoom", ({ transform }) => {
+      currentTransform = transform
+      stage.scale.set(transform.k, transform.k)
+      stage.position.set(transform.x, transform.y)
 
-          // PATCH (normcontrol-kb): подписи показываем только при наведении — при зуме прячем остальные
-          const activeNodes = nodeRenderData.filter((n) => n.active).flatMap((n) => n.label)
-          for (const label of labelsContainer.children) {
-            if (!activeNodes.includes(label)) {
-              label.alpha = 0
-            }
-          }
-        }),
-    )
+      // подписи показываем только при наведении — при зуме прячем остальные
+      const activeNodes = nodeRenderData.filter((n) => n.active).flatMap((n) => n.label)
+      for (const label of labelsContainer.children) {
+        if (!activeNodes.includes(label)) {
+          label.alpha = 0
+        }
+      }
+    })
+
+  if (enableZoom) {
+    select<HTMLCanvasElement, NodeData>(app.canvas).call(zoomBehavior)
+  }
+
+  // PATCH (normcontrol-kb): плавный зум к узлу, затем переход на страницу (клик по графу)
+  let navigating = false
+  function navigateToNode(node: NodeData) {
+    if (navigating) return
+    const targ = resolveRelative(fullSlug, node.id)
+    const url = new URL(targ, window.location.toString())
+    if (!enableZoom || node.x === undefined || node.y === undefined) {
+      window.spaNavigate(url)
+      return
+    }
+    navigating = true
+    const from = currentTransform
+    const targetK = Math.min(currentTransform.k * 1.5, 4)
+    const tx = width / 2 - node.x * targetK
+    const ty = height / 2 - node.y * targetK
+    const start = performance.now()
+    const step = () => {
+      const p = Math.min((performance.now() - start) / ZOOM_TO_NODE_MS, 1)
+      const eased = 1 - Math.pow(1 - p, 3)
+      const k = from.k + (targetK - from.k) * eased
+      const x = from.x + (tx - from.x) * eased
+      const y = from.y + (ty - from.y) * eased
+      zoomBehavior.transform(
+        select<HTMLCanvasElement, NodeData>(app.canvas),
+        zoomIdentity.translate(x, y).scale(k),
+      )
+      if (p < 1 && !stopAnimation) requestAnimationFrame(step)
+    }
+    step()
+    window.setTimeout(() => window.spaNavigate(url), ZOOM_TO_NODE_MS)
   }
 
   let stopAnimation = false
+  // PATCH (normcontrol-kb): фазы анимаций графа
+  let swayPhase = 0
+  let hubPhase = 0
+  let linkPulse = 0
+  let pullFactor = 0
+  let fadeFactor = 1
+  let leaving = false
+
+  function handlePreNav() {
+    // #20: мягкое исчезновение узлов при уходе со страницы
+    leaving = true
+  }
+  document.addEventListener("prenav", handlePreNav)
+  window.addEventListener("beforeunload", handlePreNav)
+
   function animate(time: number) {
     if (stopAnimation) return
+    swayPhase += SWAY_STEP
+    hubPhase += 0.01
+    linkPulse += 0.02
+    fadeFactor = Math.max(0, Math.min(1, fadeFactor + (leaving ? -0.06 : 0.08)))
+    pullFactor = Math.max(0, Math.min(1, pullFactor + (hoveredNodeId && !dragging ? 0.18 : -0.18)))
+
+    // «дыхание» включаем только когда симуляция остановилась, иначе она сама двигает узлы
+    const simulationStopped = simulation.alpha() < 0.02
+    const hoveredNode = hoveredNodeId ? nodesById.get(hoveredNodeId as SimpleSlug) : undefined
+    const hoveredNeighbourIds = hoveredNode ? neighbourIds.get(hoveredNode.id) : undefined
+
+    let nodeIndex = 0
     for (const n of nodeRenderData) {
-      const { x, y } = n.simulationData
-      if (!x || !y) continue
-      n.gfx.position.set(x + width / 2, y + height / 2)
-      if (n.label) {
-        n.label.position.set(x + width / 2, y + height / 2)
+      const data = n.simulationData
+      if (data.x === undefined || data.y === undefined) {
+        nodeIndex++
+        continue
       }
+
+      let px = data.x
+      let py = data.y
+
+      // #15 лёгкое покачивание после остановки симуляции
+      if (simulationStopped) {
+        px += Math.sin(swayPhase + nodeIndex * 0.3) * SWAY_AMPLITUDE
+        py += Math.cos(swayPhase + nodeIndex * 0.3) * SWAY_AMPLITUDE
+      }
+
+      // #18 соседи слегка притягиваются к узлу под курсором
+      if (hoveredNode && pullFactor > 0 && hoveredNeighbourIds?.has(data.id)) {
+        const dx = (hoveredNode.x ?? 0) - data.x
+        const dy = (hoveredNode.y ?? 0) - data.y
+        const len = Math.hypot(dx, dy) || 1
+        px += (dx / len) * PULL_DISTANCE * pullFactor
+        py += (dy / len) * PULL_DISTANCE * pullFactor
+      }
+
+      n.gfx.position.set(px + width / 2, py + height / 2)
+      if (n.label) {
+        n.label.position.set(px + width / 2, py + height / 2)
+      }
+
+      // #11 появление «волной», #14 пульсация хабов, hover-увеличение, #20 исчезновение
+      const delay = appearDelays.get(data.id) ?? 0
+      const appearRaw = Math.max(0, Math.min(1, (time - appearStart - delay) / APPEAR_MS))
+      const appear = 1 - Math.pow(1 - appearRaw, 3)
+      const hubPulse = hubIds.has(data.id) ? 1 + Math.sin(hubPhase + nodeIndex * 0.5) * 0.15 : 1
+      const hoverScale = data.id === hoveredNodeId && !dragging ? 1.3 : 1
+      n.gfx.scale.set(Math.max(0.01, appear * hubPulse * hoverScale * fadeFactor))
+      n.gfx.alpha = appearRaw * fadeFactor
+
+      nodeIndex++
     }
 
     for (const l of linkRenderData) {
@@ -595,14 +717,25 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
       const y1 = linkData.source.y! + height / 2
       const x2 = linkData.target.x! + width / 2
       const y2 = linkData.target.y! + height / 2
-      // PATCH (normcontrol-kb): связи рисуем лёгкой дугой — граф читается лучше
+      // связи рисуем лёгкой дугой — граф читается лучше
       const bow = 0.12
       const cx = (x1 + x2) / 2 - (y2 - y1) * bow
       const cy = (y1 + y2) / 2 + (x2 - x1) * bow
+      // #13 пульсация связей в покое, #19 розовая «волна» от узла под курсором
+      let alpha = hoveredNodeId ? l.alpha : l.alpha * (0.85 + Math.sin(linkPulse) * 0.25)
+      let linkColor = l.color
+      if (hoveredNodeId && l.active) {
+        linkColor = "#b86a8a"
+        alpha = 0.55 + Math.sin(linkPulse * 2) * 0.25
+      }
       l.gfx.clear()
       l.gfx.moveTo(x1, y1)
       l.gfx.quadraticCurveTo(cx, cy, x2, y2)
-      l.gfx.stroke({ alpha: l.alpha, width: 1, color: l.color })
+      l.gfx.stroke({
+        alpha: Math.max(0, Math.min(1, alpha)) * fadeFactor,
+        width: 1,
+        color: linkColor,
+      })
     }
 
     tweens.forEach((t) => t.update(time))
@@ -613,6 +746,8 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
   requestAnimationFrame(animate)
   return () => {
     stopAnimation = true
+    document.removeEventListener("prenav", handlePreNav)
+    window.removeEventListener("beforeunload", handlePreNav)
     app.destroy()
   }
 }
