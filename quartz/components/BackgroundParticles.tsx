@@ -149,9 +149,12 @@ BackgroundParticles.afterDOMLoaded = `
   function restartFadeIn() {
     const article = document.querySelector("article")
     if (!article) return
-    article.style.animation = "none"
+    article.classList.remove("is-visible")
+    // force reflow
     void article.offsetHeight
-    article.style.animation = "fadeIn 0.3s ease-out"
+    requestAnimationFrame(() => {
+      article.classList.add("is-visible")
+    })
   }
 
   initParticles()
@@ -160,6 +163,12 @@ BackgroundParticles.afterDOMLoaded = `
     destroyParticles()
     initParticles()
     restartFadeIn()
+  })
+
+  // первый показ: иначе контент останется невидимым до первого перехода
+  requestAnimationFrame(function() {
+    const article = document.querySelector("article")
+    if (article) article.classList.add("is-visible")
   })
 })()
 `
