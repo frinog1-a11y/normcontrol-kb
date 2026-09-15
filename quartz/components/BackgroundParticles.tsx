@@ -46,7 +46,6 @@ BackgroundParticles.afterDOMLoaded = `
     }
 
     const PARTICLE_COUNT = 90
-    const CONNECTION_DISTANCE = 120
     const MOUSE_RADIUS = 180
     const MOUSE_REPEL = 0.8
     const RIPPLE_RADIUS = 250
@@ -60,6 +59,8 @@ BackgroundParticles.afterDOMLoaded = `
     const PROGRESS_KEY = "astronom-progress"
     const CONSTELLATIONS_KEY = "my-constellations"
     let bgClickCount = 0
+    // очистка «пряталки» графа (снимается при уходе со страницы песочницы)
+    let graphHiderCleanup = null
     try {
       const savedProgress = parseInt(localStorage.getItem(PROGRESS_KEY) || "0", 10)
       if (!isNaN(savedProgress)) bgClickCount = savedProgress
@@ -103,23 +104,6 @@ BackgroundParticles.afterDOMLoaded = `
       document.body.appendChild(btn)
     }
 
-    function showCollection() {
-      const badges = []
-      if (bgClickCount >= 15) badges.push("🦉")
-      if (bgClickCount >= 30) badges.push("🦊")
-      if (bgClickCount >= 45) badges.push("🐻")
-      if (!badges.length) return
-      let collection = document.getElementById("astronom-collection")
-      if (!collection) {
-        collection = document.createElement("div")
-        collection.id = "astronom-collection"
-        collection.title = "Моя коллекция созвездий"
-        document.body.appendChild(collection)
-      }
-      // обновляем бейджи при каждом открытии нового созвездия
-      collection.textContent = badges.join(" ")
-    }
-
     function makeStar(x, y) {
       const palette = currentColors()
       const speedFactor = 0.4 + Math.random() * 1.2
@@ -149,11 +133,14 @@ BackgroundParticles.afterDOMLoaded = `
       if (bgClickCount >= 45) document.body.classList.add("astronom-bear")
       if (bgClickCount >= 60) showPlaygroundButton()
       if (bgClickCount >= 100) document.body.classList.add("astronom-flight")
-      showCollection()
+      // созвездия — компактные значки в углу
+      if (bgClickCount >= 15) showConstellationBadge("🦉", "Сова")
+      if (bgClickCount >= 30) showConstellationBadge("🦊", "Лиса")
+      if (bgClickCount >= 45) showConstellationBadge("🐻", "Медведь")
       showResetButton()
 
       if (!announce) return
-      if (bgClickCount === 5) showToast("Линии между звёздами открыты", "✨")
+      if (bgClickCount === 5) showToast("Звёзды стали ярче", "✨")
       if (bgClickCount === 15) showToast("Созвездие «Сова» открыто", "🦉")
       if (bgClickCount === 30) showToast("Созвездие «Лиса» открыто", "🦊")
       if (bgClickCount === 45) showToast("Созвездие «Медведь» открыто", "🐻")
@@ -203,8 +190,12 @@ BackgroundParticles.afterDOMLoaded = `
         )
         const pgBtn = document.getElementById("playground-btn")
         if (pgBtn) pgBtn.remove()
-        const collection = document.getElementById("astronom-collection")
-        if (collection) collection.remove()
+        document.querySelectorAll(".constellation-badge").forEach(function(b) {
+          b.remove()
+        })
+        document.querySelectorAll(".constellation-tip").forEach(function(t) {
+          t.remove()
+        })
         document.querySelectorAll(".astronom-toast").forEach(function(t) {
           t.remove()
         })
@@ -227,84 +218,76 @@ BackgroundParticles.afterDOMLoaded = `
       return false
     }
 
-    // созвездия: золотые фигуры, включаются прогрессом
-    function drawConstellation(ctx2, points, close) {
-      const t = performance.now() / 1000
-      ctx2.save()
-      ctx2.globalAlpha = 0.55 + Math.sin(t) * 0.15
-      ctx2.strokeStyle = "#c8a878"
-      ctx2.fillStyle = "#c8a878"
-      ctx2.lineWidth = 1
-      ctx2.beginPath()
-      ctx2.moveTo(points[0][0], points[0][1])
-      for (let i = 1; i < points.length; i++) ctx2.lineTo(points[i][0], points[i][1])
-      if (close) ctx2.closePath()
-      ctx2.stroke()
-      for (const pt of points) {
-        ctx2.beginPath()
-        ctx2.arc(pt[0], pt[1], 2, 0, Math.PI * 2)
-        ctx2.fill()
+    function pageIsPlayground() {
+      return (window.location.pathname || "").indexOf("playground") !== -1
+    }
+
+    /**
+     * Надёжно убирает граф на /playground: CSS-селекторы страхуем инлайн-стилем,
+     * повторяем несколько раз (SPA-морф успевает позже) и следим за DOM первые 5 секунд.
+     */
+    function hideGraphOnPlayground() {
+      if (!pageIsPlayground()) {
+        document.body.classList.remove("playground-page")
+        return
       }
-      ctx2.restore()
+      document.body.classList.add("playground-page")
+      const selectors = ".graph-container, .graph-outer, .graph, .global-graph-outer, .sidebar.right"
+      const hide = function() {
+        if (!pageIsPlayground()) return
+        document.querySelectorAll(selectors).forEach(function(el) {
+          if (el.style.display !== "none") el.style.display = "none"
+        })
+      }
+      hide()
+      const timers = [
+        setTimeout(hide, 100),
+        setTimeout(hide, 500),
+        setTimeout(hide, 1500),
+      ]
+      const observer = new MutationObserver(hide)
+      observer.observe(document.body, { childList: true, subtree: true })
+      const stopObserver = setTimeout(function() {
+        observer.disconnect()
+      }, 5000)
+
+      graphHiderCleanup = function() {
+        observer.disconnect()
+        clearTimeout(stopObserver)
+        for (const t of timers) clearTimeout(t)
+        // уходим со страницы — возвращаем граф к обычному виду
+        document.querySelectorAll(selectors).forEach(function(el) {
+          el.style.display = ""
+        })
+        document.body.classList.remove("playground-page")
+        graphHiderCleanup = null
+      }
     }
 
-    function drawConstellationOwl(ctx2, width2, height2) {
-      const cx = width2 * 0.15
-      const cy = height2 * 0.2
-      const s = 60
-      drawConstellation(
-        ctx2,
-        [
-          [cx - s, cy],
-          [cx - s / 2, cy - s / 2],
-          [cx, cy],
-          [cx + s / 2, cy - s / 2],
-          [cx + s, cy],
-          [cx + s / 2, cy + s / 2],
-          [cx, cy],
-          [cx - s / 2, cy + s / 2],
-        ],
-        true,
-      )
-    }
-
-    function drawConstellationFox(ctx2, width2, height2) {
-      const cx = width2 * 0.85
-      const cy = height2 * 0.22
-      const s = 55
-      drawConstellation(
-        ctx2,
-        [
-          [cx - s, cy - s / 2],
-          [cx - s / 2, cy - s],
-          [cx, cy - s / 3],
-          [cx + s / 2, cy - s],
-          [cx + s, cy - s / 2],
-          [cx + s / 2, cy + s / 2],
-          [cx, cy + s],
-          [cx - s / 2, cy + s / 2],
-        ],
-        true,
-      )
-    }
-
-    function drawConstellationBear(ctx2, width2, height2) {
-      const cx = width2 * 0.5
-      const cy = height2 * 0.85
-      const s = 70
-      drawConstellation(
-        ctx2,
-        [
-          [cx - s, cy],
-          [cx - s / 2, cy - s / 2],
-          [cx, cy - s / 3],
-          [cx + s / 2, cy - s / 2],
-          [cx + s, cy],
-          [cx + s / 3, cy + s / 3],
-          [cx - s / 3, cy + s / 3],
-        ],
-        true,
-      )
+    /** Значок открытого созвездия в углу; клик по значку показывает подсказку. */
+    function showConstellationBadge(emoji, name) {
+      if (document.getElementById("badge-" + name)) return
+      const badge = document.createElement("div")
+      badge.id = "badge-" + name
+      badge.className = "constellation-badge"
+      badge.textContent = emoji
+      badge.title = "Созвездие " + name
+      badge.addEventListener("click", function() {
+        const tip = document.createElement("div")
+        tip.className = "constellation-tip"
+        tip.textContent = "✨ Созвездие " + name + " открыто!"
+        document.body.appendChild(tip)
+        setTimeout(function() {
+          tip.classList.add("visible")
+        }, 50)
+        setTimeout(function() {
+          tip.classList.remove("visible")
+          setTimeout(function() {
+            tip.remove()
+          }, 400)
+        }, 2500)
+      })
+      document.body.appendChild(badge)
     }
 
     // ===== Песочница (/playground): режимы, звёзды пользователя и связи =====
@@ -747,79 +730,10 @@ BackgroundParticles.afterDOMLoaded = `
         if (p.y > h) p.y = 0
       }
 
-      // Светящиеся линии: слой 1 — лавандовое свечение, слой 2 — золотое ядро
-      // (shadowBlur дорогой, поэтому при 200 частицах в «свободном полёте» рисуем без него)
-      const useLineGlow = particles.length <= 120
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const a = particles[i]
-          const b = particles[j]
-          const dx = a.x - b.x
-          const dy = a.y - b.y
-          if (Math.abs(dx) > CONNECTION_DISTANCE || Math.abs(dy) > CONNECTION_DISTANCE) continue
-          const d = Math.sqrt(dx * dx + dy * dy)
-          if (d >= CONNECTION_DISTANCE) continue
-          // чем ближе звёзды — тем ярче линия
-          const fade = Math.pow(1 - d / CONNECTION_DISTANCE, 1.5)
+      // PATCH (normcontrol-kb): линии между частицами полностью убраны — по просьбе
+      // (остаются только сами частицы, glow у курсора, точки шлейфа и круги клика)
 
-          ctx.save()
-          ctx.lineCap = "round"
-          if (useLineGlow) {
-            ctx.shadowColor = "#8a7ab8"
-            ctx.shadowBlur = 8
-          }
-          ctx.strokeStyle = "rgba(138, 122, 184, " + 0.15 * fade + ")"
-          ctx.lineWidth = 1.5
-          ctx.beginPath()
-          ctx.moveTo(a.x, a.y)
-          ctx.lineTo(b.x, b.y)
-          ctx.stroke()
-          ctx.restore()
-
-          ctx.save()
-          if (useLineGlow) {
-            ctx.shadowColor = "#c8a878"
-            ctx.shadowBlur = 4
-          }
-          ctx.strokeStyle = "rgba(200, 168, 120, " + 0.35 * fade + ")"
-          ctx.lineWidth = 0.6
-          ctx.beginPath()
-          ctx.moveTo(a.x, a.y)
-          ctx.lineTo(b.x, b.y)
-          ctx.stroke()
-          ctx.restore()
-        }
-      }
-
-      // Линии у курсора — розовое свечение (в режиме рисования не подсвечиваем)
-      if (!drawingMode) {
-        for (let i = 0; i < particles.length; i++) {
-          for (let j = i + 1; j < particles.length; j++) {
-            const a = particles[i]
-            const b = particles[j]
-            const dx = a.x - b.x
-            const dy = a.y - b.y
-            if (Math.abs(dx) > CONNECTION_DISTANCE || Math.abs(dy) > CONNECTION_DISTANCE) continue
-            const d = Math.sqrt(dx * dx + dy * dy)
-            if (d >= CONNECTION_DISTANCE) continue
-            const aNear = Math.hypot(a.x - mouse.x, a.y - mouse.y) < MOUSE_RADIUS
-            const bNear = Math.hypot(b.x - mouse.x, b.y - mouse.y) < MOUSE_RADIUS
-            if (!aNear && !bNear) continue
-            const fade = 1 - d / CONNECTION_DISTANCE
-            ctx.save()
-            ctx.lineCap = "round"
-            ctx.shadowColor = "#b86a8a"
-            ctx.shadowBlur = 15
-            ctx.strokeStyle = "rgba(184, 106, 138, " + 0.5 * fade + ")"
-            ctx.lineWidth = 1
-            ctx.beginPath()
-            ctx.moveTo(a.x, a.y)
-            ctx.lineTo(b.x, b.y)
-            ctx.stroke()
-            ctx.restore()
-          }
-        }
-      }
+      // PATCH (normcontrol-kb): линии от курсора к частицам тоже убраны
 
       for (const t of trail) {
         if (t.life <= 0) continue
@@ -849,10 +763,7 @@ BackgroundParticles.afterDOMLoaded = `
         ctx.stroke()
       }
 
-      // созвездия «Астронома» и сцена песочницы
-      if (bgClickCount >= 15) drawConstellationOwl(ctx, w, h)
-      if (bgClickCount >= 30) drawConstellationFox(ctx, w, h)
-      if (bgClickCount >= 45) drawConstellationBear(ctx, w, h)
+      // созвездия больше не рисуются силуэтами — только значки в углу
       if (isPlayground) drawPlaygroundScene(ctx)
 
       for (const p of particles) {
@@ -862,7 +773,9 @@ BackgroundParticles.afterDOMLoaded = `
         const selBoost = distSel < SELECTION_RADIUS ? (1 - distSel / SELECTION_RADIUS) * 0.4 : 0
 
         if (!drawingMode && glowAmount > 0) {
-          ctx.globalAlpha = glowAmount * GLOW_ALPHA
+          // прогресс ≥ 5 кликов — свечение вокруг курсора заметно ярче
+          const glowBoost = bgClickCount >= 5 ? 1.6 : 1
+          ctx.globalAlpha = glowAmount * GLOW_ALPHA * glowBoost
           ctx.fillStyle = p.color
           ctx.beginPath()
           ctx.arc(p.x, p.y, p.r * GLOW_SCALE, 0, Math.PI * 2)
@@ -898,11 +811,13 @@ BackgroundParticles.afterDOMLoaded = `
       window.removeEventListener("mouseup", onPgUp)
       for (const fn of pgCleanups) fn()
       pgCleanups.length = 0
+      if (graphHiderCleanup) graphHiderCleanup()
     }
 
     // прогресс и контролы песочницы: применяем при каждом запуске (в том числе после SPA-перехода)
     applyProgress(false)
     setupPlaygroundControls()
+    hideGraphOnPlayground()
   }
 
   // fade-in контента при SPA-переходах: перезапускаем переход через класс

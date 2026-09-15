@@ -707,24 +707,72 @@ th {
   transform: scale(1.15) rotate(15deg);
 }
 
-/* коллекцию ставим выше кнопки «Наверх», чтобы не перекрывать её */
-#astronom-collection {
+/* значки открытых созвездий — столбик в правом нижнем углу
+   (right: 5rem, чтобы не перекрывать кнопку «Наверх» справа и ↻ слева) */
+.constellation-badge {
   position: fixed;
-  bottom: 5.4rem;
-  right: 2rem;
-  padding: 0.5rem 1rem;
-  background: rgba(242, 238, 248, 0.9);
+  right: 5rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(242, 238, 248, 0.85);
   border: 1px solid #e0d8ec;
-  border-radius: 20px;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
   z-index: 50;
-  cursor: help;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   backdrop-filter: blur(4px);
+  box-shadow: 0 4px 12px rgba(138, 122, 184, 0.2);
 }
 
-[saved-theme="dark"] #astronom-collection {
-  background: rgba(26, 22, 38, 0.9);
+#badge-Сова {
+  bottom: 2rem;
+}
+
+#badge-Лиса {
+  bottom: 5rem;
+}
+
+#badge-Медведь {
+  bottom: 8rem;
+}
+
+.constellation-badge:hover {
+  transform: scale(1.15);
+  box-shadow: 0 6px 20px rgba(138, 122, 184, 0.4);
+}
+
+[saved-theme="dark"] .constellation-badge {
+  background: rgba(26, 22, 38, 0.85);
   border-color: #2a2440;
+}
+
+.constellation-tip {
+  position: fixed;
+  bottom: 11.5rem;
+  right: 5rem;
+  padding: 0.7rem 1rem;
+  background: linear-gradient(135deg, #8a7ab8, #b86a8a);
+  color: #f2eef8;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+  z-index: 200;
+  box-shadow: 0 6px 20px rgba(138, 122, 184, 0.4);
+}
+
+.constellation-tip.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* кнопка сброса прогресса Астронома */
@@ -847,20 +895,28 @@ th {
 }
 
 /* ===== Песочница: прячем граф и правый сайдбар ===== */
+body[data-slug="playground"] .graph,
 body[data-slug="playground"] .graph-container,
 body[data-slug="playground"] .graph-outer,
 body[data-slug="playground"] .global-graph-outer,
 body[data-slug="playground"] .sidebar.right,
+body.is-playground .graph,
 body.is-playground .graph-container,
 body.is-playground .graph-outer,
 body.is-playground .global-graph-outer,
-body.is-playground .sidebar.right {
+body.is-playground .sidebar.right,
+body.playground-page .graph,
+body.playground-page .graph-container,
+body.playground-page .graph-outer,
+body.playground-page .global-graph-outer,
+body.playground-page .sidebar.right {
   display: none !important;
 }
 
 /* сетка страницы: две колонки вместо трёх, иначе справа останется пустая колонка 320px */
 body[data-slug="playground"] .page > #quartz-body,
-body.is-playground .page > #quartz-body {
+body.is-playground .page > #quartz-body,
+body.playground-page .page > #quartz-body {
   position: relative;
   z-index: 10;
   grid-template-columns: auto 1fr !important;
@@ -871,33 +927,37 @@ body.is-playground .page > #quartz-body {
 }
 
 body[data-slug="playground"] .center,
-body.is-playground .center {
-  max-width: 100%;
-  padding-right: 1rem;
+body.is-playground .center,
+body.playground-page .center {
+  max-width: 100% !important;
+  padding-right: 1rem !important;
 }
 
 /* canvas под контентом, кнопки и текст — поверх */
 body[data-slug="playground"] #bg-particles,
-body.is-playground #bg-particles {
+body.is-playground #bg-particles,
+body.playground-page #bg-particles {
   z-index: 0;
   opacity: 1;
 }
 
 /* статья песочницы */
 body[data-slug="playground"] article,
-body.is-playground article {
+body.is-playground article,
+body.playground-page article {
   position: relative;
   z-index: 10;
   background: rgba(242, 238, 248, 0.85);
   backdrop-filter: blur(6px);
   border-radius: 12px;
   padding: 2rem;
-  max-width: 800px;
+  max-width: 900px;
   margin: 4rem auto;
 }
 
 [saved-theme="dark"] body[data-slug="playground"] article,
-[saved-theme="dark"] body.is-playground article {
+[saved-theme="dark"] body.is-playground article,
+[saved-theme="dark"] body.playground-page article {
   background: rgba(26, 22, 38, 0.85);
 }
 
