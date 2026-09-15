@@ -649,6 +649,147 @@ th {
   }
 }
 
+/* ===== Мини-игра «Астроном» ===== */
+.astronom-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translate(-50%, 20px);
+  background: linear-gradient(135deg, #8a7ab8, #b86a8a);
+  color: #f2eef8;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(138, 122, 184, 0.4);
+  z-index: 200;
+  font-size: 0.95rem;
+  opacity: 0;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+.astronom-toast.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+#playground-btn {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8a7ab8, #b86a8a);
+  color: #f2eef8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(138, 122, 184, 0.5);
+  z-index: 50;
+  transition: transform 0.2s ease;
+  animation: playground-pulse 3s ease-in-out infinite;
+}
+
+@keyframes playground-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+#playground-btn:hover {
+  transform: scale(1.15) rotate(15deg);
+}
+
+/* коллекцию ставим выше кнопки «Наверх», чтобы не перекрывать её */
+#astronom-collection {
+  position: fixed;
+  bottom: 5.4rem;
+  right: 2rem;
+  padding: 0.5rem 1rem;
+  background: rgba(242, 238, 248, 0.9);
+  border: 1px solid #e0d8ec;
+  border-radius: 20px;
+  font-size: 1.2rem;
+  z-index: 50;
+  cursor: help;
+  backdrop-filter: blur(4px);
+}
+
+[saved-theme="dark"] #astronom-collection {
+  background: rgba(26, 22, 38, 0.9);
+  border-color: #2a2440;
+}
+
+/* панель песочницы (создаётся скриптом) */
+#pg-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1.5rem 0;
+}
+
+#pg-panel button {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #e0d8ec;
+  background: #f2eef8;
+  color: #2e2840;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+#pg-panel button:hover {
+  background: #8a7ab8;
+  border-color: #6a5a8a;
+  color: #f2eef8;
+}
+
+[saved-theme="dark"] #pg-panel button {
+  background: #2a2440;
+  border-color: #2a2440;
+  color: #e8e0f2;
+}
+
+#my-constellations {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+}
+
+/* страница песочницы: частицы выходят на передний план, текст — в «карточке» */
+body[data-slug="playground"] #bg-particles {
+  z-index: 1;
+  opacity: 1;
+}
+
+body[data-slug="playground"] article {
+  position: relative;
+  z-index: 10;
+  background: rgba(242, 238, 248, 0.85);
+  backdrop-filter: blur(6px);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 600px;
+  margin: 4rem auto;
+}
+
+[saved-theme="dark"] body[data-slug="playground"] article {
+  background: rgba(26, 22, 38, 0.85);
+}
+
 /* ===== Эшелон 4: мобильная версия и печать ===== */
 @media (max-width: 768px) {
   article h1 {
