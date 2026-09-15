@@ -97,6 +97,8 @@ BackgroundParticles.afterDOMLoaded = `
       ripple.life = 1
       flashes.push({ x: x, y: y, life: 1 })
       pushTrail()
+      // звук (модуль sound.ts) — кристаллический звон, если звук включён
+      window.dispatchEvent(new CustomEvent("particle-click"))
     }
     function onTouchStart(e) {
       if (e.touches && e.touches.length > 0) {

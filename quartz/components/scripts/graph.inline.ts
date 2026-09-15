@@ -19,6 +19,8 @@ import { Group as TweenGroup, Tween as Tweened } from "@tweenjs/tween.js"
 import { registerEscapeHandler, removeAllChildren } from "./util"
 import { FullSlug, SimpleSlug, getFullSlug, resolveRelative, simplifySlug } from "../../util/path"
 import { D3Config } from "../Graph"
+// PATCH (normcontrol-kb): космические звуки (Web Audio API) — тихие, только при включённом звуке
+import { playPulsar, playShimmer, playSupernova } from "./sound"
 
 type GraphicsInfo = {
   color: string
@@ -444,6 +446,8 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
   stage.addChild(nodesContainer, labelsContainer, linkContainer)
 
   let appearCounter = 0
+  // PATCH (normcontrol-kb): throttle для звука наведения
+  let lastHoverTime = 0
   for (const n of graphData.nodes) {
     const nodeId = n.id
 
@@ -480,6 +484,12 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
       .on("pointerover", (e) => {
         updateHoverInfo(e.target.label)
         oldLabelOpacity = label.alpha
+        // PATCH (normcontrol-kb): очень тихий pulsar при наведении (throttle 200 мс)
+        const now = Date.now()
+        if (now - lastHoverTime > 200) {
+          lastHoverTime = now
+          playPulsar()
+        }
         // масштаб узла под курсором ведёт animate (чтобы не конфликтовать с пульсацией хабов)
         if (!dragging) {
           renderPixiFromD3()
@@ -545,6 +555,8 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
         .subject(() => graphData.nodes.find((n) => n.id === hoveredNodeId))
         .on("start", function dragstarted(event) {
           if (!event.active) simulation.alphaTarget(1).restart()
+          // PATCH (normcontrol-kb): shimmer при начале перетаскивания
+          playShimmer()
           event.subject.fx = event.subject.x
           event.subject.fy = event.subject.y
           event.subject.__initialDragPos = {
@@ -566,6 +578,8 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
           event.subject.fx = null
           event.subject.fy = null
           dragging = false
+          // PATCH (normcontrol-kb): pulsar при отпускании узла
+          playPulsar()
 
           // if the time between mousedown and mouseup is short, we consider it a click
           if (Date.now() - dragStartTime < 500) {
@@ -611,6 +625,8 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
   let navigating = false
   function navigateToNode(node: NodeData) {
     if (navigating) return
+    // PATCH (normcontrol-kb): supernova при клике по узлу
+    playSupernova()
     const targ = resolveRelative(fullSlug, node.id)
     const url = new URL(targ, window.location.toString())
     if (!enableZoom || node.x === undefined || node.y === undefined) {

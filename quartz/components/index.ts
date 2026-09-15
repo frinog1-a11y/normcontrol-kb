@@ -27,6 +27,7 @@ import BackToTop from "./BackToTop"
 import EditOnGitHub from "./EditOnGitHub"
 import BackgroundParticles from "./BackgroundParticles"
 import ReadingProgress from "./ReadingProgress"
+import SoundToggle from "./SoundToggle"
 
 export {
   ArticleTitle,
@@ -58,4 +59,5 @@ export {
   EditOnGitHub,
   BackgroundParticles,
   ReadingProgress,
+  SoundToggle,
 }

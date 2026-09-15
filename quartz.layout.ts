@@ -10,6 +10,7 @@ export const sharedPageComponents: SharedLayout = {
     Component.ReadingProgress(),
     Component.EditOnGitHub(),
     Component.BackToTop(),
+    Component.SoundToggle(),
   ],
   footer: Component.Footer({
     links: {

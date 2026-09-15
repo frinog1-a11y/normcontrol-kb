@@ -596,6 +596,49 @@ th {
   border-color: var(--tertiary);
 }
 
+/* ===== Кнопка звука ===== */
+#sound-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 4rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(242, 238, 248, 0.8);
+  border: 1px solid #e0d8ec;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 50;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+#sound-toggle:hover {
+  background: #8a7ab8;
+  transform: scale(1.05);
+}
+
+[saved-theme="dark"] #sound-toggle {
+  background: rgba(26, 22, 38, 0.8);
+  border-color: #2a2440;
+}
+
+@media (max-width: 768px) {
+  #sound-toggle {
+    top: 0.6rem;
+    right: 3.2rem;
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+}
+
+@media print {
+  #sound-toggle {
+    display: none !important;
+  }
+}
+
 /* ===== Эшелон 4: мобильная версия и печать ===== */
 @media (max-width: 768px) {
   article h1 {
