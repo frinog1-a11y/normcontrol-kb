@@ -81,6 +81,17 @@ npx tsc --noEmit
 npx prettier --check .
 ```
 
+## Как добавить заметку
+
+1. Открой [страницу /add-note](https://frinog1-a11y.github.io/normcontrol-kb/add-note) на сайте.
+2. Нажми «✏ Создать задачу».
+3. Заполни одно поле своими словами — ИИ создаст заметку и опубликует её.
+4. Посмотреть все задачи: [Issues](https://github.com/frinog1-a11y/normcontrol-kb/issues)
+5. Визуальная доска: [Projects](https://github.com/frinog1-a11y/normcontrol-kb/projects) — новые задачи попадают в **To Do**, обработанные уходят в **Done**.
+
+<!-- PATCH (normcontrol-kb): когда доска создана, заменить ссылку Projects на точный URL вида
+     https://github.com/users/frinog1-a11y/projects/1 -->
+
 ## Как добавить материал
 
 1. Откройте как хранилище (vault) папку `content` — там только заметки, без кода Quartz и `node_modules`, поэтому поиск и граф не засоряются лишним.
