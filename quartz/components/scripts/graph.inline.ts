@@ -53,6 +53,8 @@ type NodeRenderData = GraphicsInfo & {
 }
 
 const localStorageKey = "graph-visited"
+// PATCH (normcontrol-kb): минимальный порог подписи узла (реальный порог считает топ-12% графа)
+const BIG_NODE_LINKS = 5
 function getVisited(): Set<SimpleSlug> {
   return new Set(JSON.parse(localStorage.getItem(localStorageKey) ?? "[]"))
 }
@@ -177,6 +179,35 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
   const radius = (Math.min(width, height) / 2) * 0.8
   if (enableRadial) simulation.force("radial", forceRadial(radius).strength(0.2))
 
+  // PATCH (normcontrol-kb): категория узла — по папке базы; у ошибок и документов — по подпапке.
+  const catKey = (id: string) => {
+    const parts = id.split("/")
+    if ((parts[0] === "02_Ошибки" || parts[0] === "04_Документы") && parts.length > 1) {
+      return parts[0] + "/" + parts[1]
+    }
+    return parts[0]
+  }
+
+  // PATCH (normcontrol-kb): мягкая кластеризация — категории притягиваются к своим якорям
+  if (!enableRadial) {
+    const catKeys = [...new Set(graphData.nodes.map((n) => catKey(n.id)))].sort()
+    const anchors = new Map<string, { x: number; y: number }>()
+    catKeys.forEach((key, i) => {
+      const angle = (i / catKeys.length) * Math.PI * 2
+      anchors.set(key, { x: Math.cos(angle) * radius * 0.55, y: Math.sin(angle) * radius * 0.55 })
+    })
+    const clusterForce = (alpha: number) => {
+      const strength = 0.06 * alpha
+      for (const node of graphData.nodes) {
+        const anchor = anchors.get(catKey(node.id))
+        if (!anchor) continue
+        node.vx = (node.vx ?? 0) + (anchor.x - (node.x ?? 0)) * strength
+        node.vy = (node.vy ?? 0) + (anchor.y - (node.y ?? 0)) * strength
+      }
+    }
+    simulation.force("cluster", clusterForce)
+  }
+
   // precompute style prop strings as pixi doesn't support css variables
   const cssVars = [
     "--secondary",
@@ -186,6 +217,17 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
     "--lightgray",
     "--dark",
     "--darkgray",
+    // PATCH (normcontrol-kb): цвета категорий графа (заданы в quartz/styles/custom.scss)
+    "--graph-cat-1",
+    "--graph-cat-2",
+    "--graph-cat-3",
+    "--graph-cat-4",
+    "--graph-cat-5",
+    "--graph-cat-6",
+    "--graph-cat-7",
+    "--graph-cat-8",
+    "--graph-cat-9",
+    "--graph-cat-10",
     "--bodyFont",
   ] as const
   const computedStyleMap = cssVars.reduce(
@@ -196,23 +238,60 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
     {} as Record<(typeof cssVars)[number], string>,
   )
 
+  // PATCH (normcontrol-kb): цвет категории — из палитры --graph-cat-N (назначение стабильное)
+  const categoryColors = new Map<string, string>()
+  {
+    const keys = [...new Set(graphData.nodes.map((n) => catKey(n.id)))].sort()
+    const palette = [
+      "--graph-cat-1",
+      "--graph-cat-2",
+      "--graph-cat-3",
+      "--graph-cat-4",
+      "--graph-cat-5",
+      "--graph-cat-6",
+      "--graph-cat-7",
+      "--graph-cat-8",
+      "--graph-cat-9",
+      "--graph-cat-10",
+    ] as const
+    keys.forEach((key, i) => {
+      const value = computedStyleMap[palette[i % palette.length]].trim()
+      categoryColors.set(key, value !== "" ? value : computedStyleMap["--gray"])
+    })
+  }
+
+  // PATCH (normcontrol-kb): подписи показываем у самых связных узлов (топ ~12% графа)
+  const labelThreshold = (() => {
+    const counts = graphData.nodes.map((n) => linkCount(n)).sort((a, b) => b - a)
+    const top = counts[Math.floor(counts.length * 0.12)] ?? BIG_NODE_LINKS
+    return Math.max(BIG_NODE_LINKS, top)
+  })()
+
   // calculate color
   const color = (d: NodeData) => {
     const isCurrent = d.id === slug
     if (isCurrent) {
       return computedStyleMap["--secondary"]
-    } else if (visited.has(d.id) || d.id.startsWith("tags/")) {
+    } else if (d.id.startsWith("tags/")) {
+      // PATCH (normcontrol-kb): теги — акцентным цветом, остальные узлы — по категории
       return computedStyleMap["--tertiary"]
     } else {
-      return computedStyleMap["--gray"]
+      return categoryColors.get(catKey(d.id)) ?? computedStyleMap["--gray"]
     }
   }
 
+  function linkCount(d: NodeData) {
+    return graphData.links.filter((l) => l.source.id === d.id || l.target.id === d.id).length
+  }
+
+  // PATCH (normcontrol-kb): размер узла заметно зависит от числа связей
   function nodeRadius(d: NodeData) {
-    const numLinks = graphData.links.filter(
-      (l) => l.source.id === d.id || l.target.id === d.id,
-    ).length
-    return 2 + Math.sqrt(numLinks)
+    return 2.5 + Math.sqrt(linkCount(d)) * 1.6
+  }
+
+  // PATCH (normcontrol-kb): «крупный» узел — из топ-12% по числу связей; такие подписаны всегда
+  function isBigNode(d: NodeData) {
+    return linkCount(d) >= labelThreshold
   }
 
   let hoveredNodeId: string | null = null
@@ -381,7 +460,8 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
       interactive: false,
       eventMode: "none",
       text: n.text,
-      alpha: 0,
+      // PATCH (normcontrol-kb): крупные узлы подписаны сразу, мелкие — только при наведении/зуме
+      alpha: isBigNode(n) ? 0.9 : 0,
       anchor: { x: 0.5, y: 1.2 },
       style: {
         fontSize: fontSize * 15,
@@ -391,6 +471,7 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
       resolution: window.devicePixelRatio * 4,
     })
     label.scale.set(1 / scale)
+    ;(label as Text & { __baseAlpha?: number }).__baseAlpha = isBigNode(n) ? 0.9 : 0
 
     let oldLabelOpacity = 0
     const isTagNode = nodeId.startsWith("tags/")
@@ -420,6 +501,9 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
 
     if (isTagNode) {
       gfx.stroke({ width: 2, color: computedStyleMap["--tertiary"] })
+    } else if (visited.has(n.id)) {
+      // PATCH (normcontrol-kb): уже просмотренные заметки помечаем тонкой обводкой
+      gfx.stroke({ width: 1, color: computedStyleMap["--secondary"] })
     }
 
     nodesContainer.addChild(gfx)
@@ -519,7 +603,9 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
 
           for (const label of labelsContainer.children) {
             if (!activeNodes.includes(label)) {
-              label.alpha = scaleOpacity
+              // PATCH (normcontrol-kb): подписи крупных узлов не гасим при отдалении
+              const base = (label as Text & { __baseAlpha?: number }).__baseAlpha ?? 0
+              label.alpha = Math.max(scaleOpacity, base)
             }
           }
         }),
@@ -540,11 +626,18 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
 
     for (const l of linkRenderData) {
       const linkData = l.simulationData
+      const x1 = linkData.source.x! + width / 2
+      const y1 = linkData.source.y! + height / 2
+      const x2 = linkData.target.x! + width / 2
+      const y2 = linkData.target.y! + height / 2
+      // PATCH (normcontrol-kb): связи рисуем лёгкой дугой — граф читается лучше
+      const bow = 0.12
+      const cx = (x1 + x2) / 2 - (y2 - y1) * bow
+      const cy = (y1 + y2) / 2 + (x2 - x1) * bow
       l.gfx.clear()
-      l.gfx.moveTo(linkData.source.x! + width / 2, linkData.source.y! + height / 2)
-      l.gfx
-        .lineTo(linkData.target.x! + width / 2, linkData.target.y! + height / 2)
-        .stroke({ alpha: l.alpha, width: 1, color: l.color })
+      l.gfx.moveTo(x1, y1)
+      l.gfx.quadraticCurveTo(cx, cy, x2, y2)
+      l.gfx.stroke({ alpha: l.alpha, width: 1, color: l.color })
     }
 
     tweens.forEach((t) => t.update(time))

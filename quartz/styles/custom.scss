@@ -176,6 +176,35 @@ code {
   border: 1px solid var(--lightgray);
 }
 
+/* ===== Палитра категорий графа ===== */
+// узлы графа красятся по категориям (ошибки и документы — по подпапкам),
+// цвета читает quartz/components/scripts/graph.inline.ts
+:root {
+  --graph-cat-1: #6a5a8a; // лаванда
+  --graph-cat-2: #c87a9a; // розовый
+  --graph-cat-3: #7a8a5a; // олива
+  --graph-cat-4: #5a7a8a; // серо-голубой
+  --graph-cat-5: #a86a4a; // терракота
+  --graph-cat-6: #8a7f9a; // серо-лавандовый
+  --graph-cat-7: #4a6a9a; // синий
+  --graph-cat-8: #5a8a6a; // зелёный
+  --graph-cat-9: #9a8a4a; // охра
+  --graph-cat-10: #4a8a8a; // бирюзовый
+}
+
+:root[saved-theme="dark"] {
+  --graph-cat-1: #b8a8d8;
+  --graph-cat-2: #d89ab8;
+  --graph-cat-3: #b8c88a;
+  --graph-cat-4: #8ab8c8;
+  --graph-cat-5: #d8a888;
+  --graph-cat-6: #a8a0b8;
+  --graph-cat-7: #8a9ad8;
+  --graph-cat-8: #98c8a8;
+  --graph-cat-9: #d8c088;
+  --graph-cat-10: #90c8c0;
+}
+
 /* ===== Хлебные крошки ===== */
 .breadcrumb-container {
   font-size: 0.85rem;
