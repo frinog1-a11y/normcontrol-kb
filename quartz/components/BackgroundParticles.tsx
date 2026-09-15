@@ -3,6 +3,8 @@ import { QuartzComponent, QuartzComponentConstructor } from "./types"
 /**
  * Астральный фон: canvas создаётся скриптом и полностью пересоздаётся на каждом SPA-переходе
  * (событие "nav"). Палитра, glow, рябь от клика, шлейф курсора, реакция на скролл и выделение.
+ * Здесь же — перезапуск inline-скриптов внутри article после SPA-перехода (нужно мини-игре
+ * на /echelon: морф DOM вставляет script-узлы, которые сами по себе не исполняются).
  */
 const BackgroundParticles: QuartzComponent = () => {
   return null
@@ -55,489 +57,6 @@ BackgroundParticles.afterDOMLoaded = `
     const TRAIL_MAX = 30
     const SELECTION_RADIUS = 200
 
-    // ===== Мини-игра «Астроном»: прогрессия по кликам по фону =====
-    const PROGRESS_KEY = "astronom-progress"
-    const CONSTELLATIONS_KEY = "my-constellations"
-    let bgClickCount = 0
-    // очистка «пряталки» графа (снимается при уходе со страницы песочницы)
-    let graphHiderCleanup = null
-    try {
-      const savedProgress = parseInt(localStorage.getItem(PROGRESS_KEY) || "0", 10)
-      if (!isNaN(savedProgress)) bgClickCount = savedProgress
-    } catch (e) {}
-    // режим песочницы: проверяем и data-slug, и URL (SPA-переход мог ещё не обновить body)
-    function urlSlug() {
-      const parts = window.location.pathname.split("/").filter(function(s) {
-        return s.length > 0
-      })
-      return parts.length ? parts[parts.length - 1] : "index"
-    }
-    const isPlayground = document.body.dataset.slug === "playground" || urlSlug() === "playground"
-    if (isPlayground) canvas.style.zIndex = "0"
-    // класс на body: страховка для CSS, если data-slug не успел обновиться при SPA-переходе
-    document.body.classList.toggle("is-playground", isPlayground)
-
-    function showToast(text, emoji) {
-      const toast = document.createElement("div")
-      toast.className = "astronom-toast"
-      toast.textContent = emoji + " " + text
-      document.body.appendChild(toast)
-      setTimeout(function() {
-        toast.classList.add("visible")
-      }, 50)
-      setTimeout(function() {
-        toast.classList.remove("visible")
-        setTimeout(function() {
-          toast.remove()
-        }, 400)
-      }, 4000)
-    }
-
-    function showPlaygroundButton() {
-      if (document.getElementById("playground-btn")) return
-      const base = document.body.dataset.basePath || ""
-      const btn = document.createElement("a")
-      btn.id = "playground-btn"
-      btn.href = base + "/playground"
-      btn.textContent = "✨"
-      btn.title = "Песочница"
-      document.body.appendChild(btn)
-    }
-
-    function makeStar(x, y) {
-      const palette = currentColors()
-      const speedFactor = 0.4 + Math.random() * 1.2
-      return {
-        x: x === undefined ? Math.random() * w : x,
-        y: y === undefined ? Math.random() * h : y,
-        vx: (Math.random() - 0.5) * 0.3 * speedFactor,
-        vy: (Math.random() - 0.5) * 0.3 * speedFactor,
-        baseR: 1.5 + Math.random() * 2.5,
-        r: 1.5,
-        pulsePhase: Math.random() * Math.PI * 2,
-        pulseSpeed: 0.005 + Math.random() * 0.01,
-        speedFactor: speedFactor,
-        color: palette[Math.floor(Math.random() * palette.length)],
-        alpha: Math.random() * 0.35 + 0.35,
-      }
-    }
-
-    function addStars(count, x, y) {
-      for (let i = 0; i < count; i++) particles.push(makeStar(x, y))
-    }
-
-    function applyProgress(announce) {
-      if (bgClickCount >= 5) document.body.classList.add("astronom-lines")
-      if (bgClickCount >= 15) document.body.classList.add("astronom-owl")
-      if (bgClickCount >= 30) document.body.classList.add("astronom-fox")
-      if (bgClickCount >= 45) document.body.classList.add("astronom-bear")
-      if (bgClickCount >= 60) showPlaygroundButton()
-      if (bgClickCount >= 100) document.body.classList.add("astronom-flight")
-      // созвездия — компактные значки в углу
-      if (bgClickCount >= 15) showConstellationBadge("🦉", "Сова")
-      if (bgClickCount >= 30) showConstellationBadge("🦊", "Лиса")
-      if (bgClickCount >= 45) showConstellationBadge("🐻", "Медведь")
-      showResetButton()
-
-      if (!announce) return
-      if (bgClickCount === 5) showToast("Звёзды стали ярче", "✨")
-      if (bgClickCount === 15) showToast("Созвездие «Сова» открыто", "🦉")
-      if (bgClickCount === 30) showToast("Созвездие «Лиса» открыто", "🦊")
-      if (bgClickCount === 45) showToast("Созвездие «Медведь» открыто", "🐻")
-      if (bgClickCount === 60) showToast("Песочница открыта!", "🎨")
-      if (bgClickCount === 100) {
-        showToast("Свободный полёт разблокирован", "🌌")
-        addStars(110)
-      }
-    }
-
-    function saveProgress() {
-      try {
-        localStorage.setItem(PROGRESS_KEY, String(bgClickCount))
-      } catch (e) {}
-    }
-
-    /** Кнопка ↻ сброса прогресса: появляется, если что-то уже открыто или сохранено. */
-    function showResetButton() {
-      if (document.getElementById("astronom-reset")) return
-      let hasSaved = false
-      try {
-        hasSaved = !!localStorage.getItem(CONSTELLATIONS_KEY)
-      } catch (e) {}
-      if (bgClickCount <= 0 && !hasSaved) return
-      const btn = document.createElement("button")
-      btn.id = "astronom-reset"
-      btn.type = "button"
-      btn.textContent = "↻"
-      btn.title = "Сбросить прогресс Астронома"
-      btn.addEventListener("click", function(e) {
-        e.stopPropagation()
-        const sure = window.confirm(
-          "Сбросить весь прогресс Астронома? Будут удалены: открытые созвездия, сохранённые созвездия и счётчик кликов.",
-        )
-        if (!sure) return
-        if (!window.confirm("Точно? Это нельзя отменить.")) return
-        try {
-          localStorage.removeItem(PROGRESS_KEY)
-          localStorage.removeItem(CONSTELLATIONS_KEY)
-        } catch (err) {}
-        document.body.classList.remove(
-          "astronom-lines",
-          "astronom-owl",
-          "astronom-fox",
-          "astronom-bear",
-          "astronom-flight",
-        )
-        const pgBtn = document.getElementById("playground-btn")
-        if (pgBtn) pgBtn.remove()
-        document.querySelectorAll(".constellation-badge").forEach(function(b) {
-          b.remove()
-        })
-        document.querySelectorAll(".constellation-tip").forEach(function(t) {
-          t.remove()
-        })
-        document.querySelectorAll(".astronom-toast").forEach(function(t) {
-          t.remove()
-        })
-        bgClickCount = 0
-        clearUserScene()
-        if (particles.length > 90) particles.length = 90
-        renderConstellationList()
-        btn.remove()
-        showToast("Прогресс сброшен", "↻")
-      })
-      document.body.appendChild(btn)
-    }
-
-    function isBackgroundClick(e) {
-      const t = e.target
-      if (!t || !t.tagName) return false
-      if (t === document.body) return true
-      if (t.id === "bg-particles" || t.id === "quartz-root") return true
-      if (t.classList && t.classList.contains("page")) return true
-      return false
-    }
-
-    function pageIsPlayground() {
-      return (window.location.pathname || "").indexOf("playground") !== -1
-    }
-
-    /**
-     * Надёжно убирает граф на /playground: CSS-селекторы страхуем инлайн-стилем,
-     * повторяем несколько раз (SPA-морф успевает позже) и следим за DOM первые 5 секунд.
-     */
-    function hideGraphOnPlayground() {
-      if (!pageIsPlayground()) {
-        document.body.classList.remove("playground-page")
-        return
-      }
-      document.body.classList.add("playground-page")
-      const selectors = ".graph-container, .graph-outer, .graph, .global-graph-outer, .sidebar.right"
-      const hide = function() {
-        if (!pageIsPlayground()) return
-        document.querySelectorAll(selectors).forEach(function(el) {
-          if (el.style.display !== "none") el.style.display = "none"
-        })
-      }
-      hide()
-      const timers = [
-        setTimeout(hide, 100),
-        setTimeout(hide, 500),
-        setTimeout(hide, 1500),
-      ]
-      const observer = new MutationObserver(hide)
-      observer.observe(document.body, { childList: true, subtree: true })
-      const stopObserver = setTimeout(function() {
-        observer.disconnect()
-      }, 5000)
-
-      graphHiderCleanup = function() {
-        observer.disconnect()
-        clearTimeout(stopObserver)
-        for (const t of timers) clearTimeout(t)
-        // уходим со страницы — возвращаем граф к обычному виду
-        document.querySelectorAll(selectors).forEach(function(el) {
-          el.style.display = ""
-        })
-        document.body.classList.remove("playground-page")
-        graphHiderCleanup = null
-      }
-    }
-
-    /** Значок открытого созвездия в углу; клик по значку показывает подсказку. */
-    function showConstellationBadge(emoji, name) {
-      if (document.getElementById("badge-" + name)) return
-      const badge = document.createElement("div")
-      badge.id = "badge-" + name
-      badge.className = "constellation-badge"
-      badge.textContent = emoji
-      badge.title = "Созвездие " + name
-      badge.addEventListener("click", function() {
-        const tip = document.createElement("div")
-        tip.className = "constellation-tip"
-        tip.textContent = "✨ Созвездие " + name + " открыто!"
-        document.body.appendChild(tip)
-        setTimeout(function() {
-          tip.classList.add("visible")
-        }, 50)
-        setTimeout(function() {
-          tip.classList.remove("visible")
-          setTimeout(function() {
-            tip.remove()
-          }, 400)
-        }, 2500)
-      })
-      document.body.appendChild(badge)
-    }
-
-    // ===== Песочница (/playground): режимы, звёзды пользователя и связи =====
-    let playgroundMode = "free"
-    let userStars = []
-    let userLinks = []
-    let draggingFromStar = null
-    let previewLine = null
-    const pgCleanups = []
-
-    function loadConstellations() {
-      try {
-        const raw = localStorage.getItem(CONSTELLATIONS_KEY)
-        const parsed = raw ? JSON.parse(raw) : []
-        return Array.isArray(parsed) ? parsed : []
-      } catch (e) {
-        return []
-      }
-    }
-
-    function findStarAt(x, y, radius) {
-      const limit = radius || 20
-      for (let i = userStars.length - 1; i >= 0; i--) {
-        const star = userStars[i]
-        const dx = star.x - x
-        const dy = star.y - y
-        if (Math.sqrt(dx * dx + dy * dy) < limit) return star
-      }
-      return null
-    }
-
-    function setPlaygroundMode(mode) {
-      playgroundMode = mode === "draw" ? "draw" : "free"
-      const freeBtn = document.getElementById("mode-free")
-      const drawBtn = document.getElementById("mode-draw")
-      if (freeBtn) freeBtn.classList.toggle("active", playgroundMode === "free")
-      if (drawBtn) drawBtn.classList.toggle("active", playgroundMode === "draw")
-      draggingFromStar = null
-      previewLine = null
-    }
-
-    function clearUserScene() {
-      userStars = []
-      userLinks = []
-      draggingFromStar = null
-      previewLine = null
-    }
-
-    function onPgDown(e) {
-      if (!isPlayground || playgroundMode !== "draw" || e.button !== 0) return
-      // клики по тексту и кнопкам не считаем
-      if (!isBackgroundClick(e)) return
-      const star = findStarAt(e.clientX, e.clientY)
-      if (star) {
-        // взялись за звезду — тянем связь
-        draggingFromStar = star
-        previewLine = { from: star, to: { x: e.clientX, y: e.clientY } }
-        return
-      }
-      // клик по пустому месту — новая звезда (с анимацией появления)
-      userStars.push({
-        x: e.clientX,
-        y: e.clientY,
-        id: Date.now() + Math.random(),
-        createdAt: performance.now(),
-      })
-    }
-
-    function onPgMove(e) {
-      if (!isPlayground || playgroundMode !== "draw" || !draggingFromStar) return
-      previewLine = { from: draggingFromStar, to: { x: e.clientX, y: e.clientY } }
-    }
-
-    function onPgUp(e) {
-      if (!isPlayground || playgroundMode !== "draw" || !draggingFromStar) return
-      const target = findStarAt(e.clientX, e.clientY)
-      if (target && target.id !== draggingFromStar.id) {
-        const from = draggingFromStar.id
-        const to = target.id
-        const exists = userLinks.some(function(l) {
-          return (l.from === from && l.to === to) || (l.from === to && l.to === from)
-        })
-        if (!exists) userLinks.push({ from: from, to: to })
-      }
-      draggingFromStar = null
-      previewLine = null
-    }
-
-    /** Отрисовка звёзд пользователя, их связей и пунктирного предпросмотра. */
-    function drawPlaygroundScene(ctx2) {
-      const now = performance.now()
-
-      // связи между звёздами
-      for (const link of userLinks) {
-        const a = userStars.find(function(s) {
-          return s.id === link.from
-        })
-        const b = userStars.find(function(s) {
-          return s.id === link.to
-        })
-        if (!a || !b) continue
-        ctx2.save()
-        ctx2.shadowColor = "#c8a878"
-        ctx2.shadowBlur = 10
-        ctx2.strokeStyle = "rgba(200, 168, 120, 0.7)"
-        ctx2.lineWidth = 1.5
-        ctx2.beginPath()
-        ctx2.moveTo(a.x, a.y)
-        ctx2.lineTo(b.x, b.y)
-        ctx2.stroke()
-        ctx2.restore()
-      }
-
-      // предпросмотр новой связи — пунктир
-      if (previewLine) {
-        ctx2.save()
-        ctx2.shadowColor = "#8a7ab8"
-        ctx2.shadowBlur = 12
-        ctx2.strokeStyle = "rgba(138, 122, 184, 0.6)"
-        ctx2.lineWidth = 1
-        ctx2.setLineDash([4, 4])
-        ctx2.beginPath()
-        ctx2.moveTo(previewLine.from.x, previewLine.from.y)
-        ctx2.lineTo(previewLine.to.x, previewLine.to.y)
-        ctx2.stroke()
-        ctx2.restore()
-      }
-
-      // звёзды пользователя с анимацией появления и вспышкой
-      for (const star of userStars) {
-        const age = (now - star.createdAt) / 1000
-        const appearScale = age < 0.3 ? age / 0.3 : 1
-        const flashOpacity = age < 0.15 ? 1 - age / 0.15 : 0
-        ctx2.save()
-        if (flashOpacity > 0) {
-          ctx2.globalAlpha = flashOpacity * 0.5
-          ctx2.fillStyle = "#c8a878"
-          ctx2.shadowColor = "#c8a878"
-          ctx2.shadowBlur = 40
-          ctx2.beginPath()
-          ctx2.arc(star.x, star.y, 25 * flashOpacity, 0, Math.PI * 2)
-          ctx2.fill()
-        }
-        ctx2.globalAlpha = 1
-        ctx2.shadowColor = "#c8a878"
-        ctx2.shadowBlur = 20
-        ctx2.fillStyle = "#f2eef8"
-        ctx2.beginPath()
-        ctx2.arc(star.x, star.y, 5 * appearScale, 0, Math.PI * 2)
-        ctx2.fill()
-        ctx2.fillStyle = "#c8a878"
-        ctx2.beginPath()
-        ctx2.arc(star.x, star.y, 2.5 * appearScale, 0, Math.PI * 2)
-        ctx2.fill()
-        ctx2.restore()
-      }
-    }
-
-    function renderConstellationList() {
-      const container = document.getElementById("my-constellations")
-      if (!container) return
-      container.textContent = ""
-      const saved = loadConstellations()
-      // пусто — подсказку рисует CSS через :empty::after
-      if (!saved.length) return
-      for (const c of saved) {
-        const count = c.stars ? c.stars.length : c.lines ? c.lines.length : 0
-        const div = document.createElement("div")
-        div.textContent = "✨ " + c.name + (count ? " — звёзд: " + count : "")
-        container.appendChild(div)
-      }
-    }
-
-    function saveUserConstellation() {
-      if (userStars.length < 2) {
-        showToast("Нужно минимум 2 звезды", "✨")
-        return
-      }
-      const name = window.prompt("Как назовёшь своё созвездие?")
-      if (!name) return
-      const saved = loadConstellations()
-      saved.push({
-        name: name,
-        stars: JSON.parse(JSON.stringify(userStars)),
-        links: JSON.parse(JSON.stringify(userLinks)),
-        createdAt: Date.now(),
-      })
-      try {
-        localStorage.setItem(CONSTELLATIONS_KEY, JSON.stringify(saved))
-      } catch (e) {}
-      showToast("Созвездие «" + name + "» сохранено", "✨")
-      renderConstellationList()
-      showResetButton()
-    }
-
-    /** Навешивает обработчик на кнопку песочницы и запоминает снятие для cleanup(). */
-    function onPgControl(el, handler) {
-      if (!el) return
-      el.addEventListener("click", handler)
-      pgCleanups.push(function() {
-        el.removeEventListener("click", handler)
-      })
-    }
-
-    /** Кнопки режимов и список созвездий: вызывается при каждом запуске (в т.ч. после SPA-перехода). */
-    function setupPlaygroundControls() {
-      if (!isPlayground) return
-      const article = document.querySelector("article")
-      if (!article) return
-      let controls = document.getElementById("playground-controls")
-      // если разметка не дала контролы — создаём сами
-      if (!controls) {
-        controls = document.createElement("div")
-        controls.id = "playground-controls"
-        const mk = function(id, label) {
-          const b = document.createElement("button")
-          b.id = id
-          b.type = "button"
-          b.textContent = label
-          controls.appendChild(b)
-          return b
-        }
-        mk("mode-free", "🌌 Свободный")
-        mk("mode-draw", "✨ Рисование")
-        mk("btn-clear", "🗑 Очистить")
-        mk("btn-save", "💾 Сохранить")
-        article.insertBefore(controls, article.firstChild)
-      }
-      if (!document.getElementById("my-constellations")) {
-        const list = document.createElement("div")
-        list.id = "my-constellations"
-        article.appendChild(list)
-      }
-
-      setPlaygroundMode(playgroundMode)
-      onPgControl(document.getElementById("mode-free"), function() {
-        setPlaygroundMode("free")
-      })
-      onPgControl(document.getElementById("mode-draw"), function() {
-        setPlaygroundMode("draw")
-      })
-      onPgControl(document.getElementById("btn-clear"), function() {
-        if (!userStars.length && !userLinks.length) return
-        if (!window.confirm("Очистить всё?")) return
-        clearUserScene()
-      })
-      onPgControl(document.getElementById("btn-save"), saveUserConstellation)
-      renderConstellationList()
-    }
-
     function resize() {
       w = window.innerWidth
       h = window.innerHeight
@@ -571,17 +90,6 @@ BackgroundParticles.afterDOMLoaded = `
       if (x < -500) return
       mouse.x = x
       mouse.y = y
-
-      // прогресс «Астронома»: считаем только клики по фону
-      if (isBackgroundClick(e)) {
-        bgClickCount++
-        saveProgress()
-        applyProgress(true)
-      }
-
-      // в режиме «Рисование» клик создаёт звезду (это делает onPgDown), а не взрыв
-      if (isPlayground && playgroundMode === "draw") return
-
       ripple.x = x
       ripple.y = y
       ripple.life = 1
@@ -592,7 +100,7 @@ BackgroundParticles.afterDOMLoaded = `
       if (e.touches && e.touches.length > 0) {
         mouse.x = e.touches[0].clientX
         mouse.y = e.touches[0].clientY
-        onPointerDown({ clientX: mouse.x, clientY: mouse.y, target: e.target })
+        onPointerDown({ clientX: mouse.x, clientY: mouse.y })
       }
     }
     function onTouchMove(e) {
@@ -627,10 +135,6 @@ BackgroundParticles.afterDOMLoaded = `
     window.addEventListener("touchend", onTouchEnd, { passive: true })
     window.addEventListener("scroll", onScroll, { passive: true })
     document.addEventListener("selectionchange", onSelectionChange, { passive: true })
-    // песочница: рисование созвездий (работает только на /playground)
-    window.addEventListener("mousemove", onPgMove, { passive: true })
-    window.addEventListener("mousedown", onPgDown, { passive: true })
-    window.addEventListener("mouseup", onPgUp, { passive: true })
 
     const particles = []
     const colors = currentColors()
@@ -651,9 +155,6 @@ BackgroundParticles.afterDOMLoaded = `
       })
     }
     for (const p of particles) p.r = p.baseR
-    // «свободный полёт» (прогресс ≥ 100) и песочница: 200 звёзд с самого старта
-    if (isPlayground) addStars(200 - particles.length)
-    else if (bgClickCount >= 100) addStars(110)
 
     const themeObserver = new MutationObserver(function() {
       const next = currentColors()
@@ -678,62 +179,42 @@ BackgroundParticles.afterDOMLoaded = `
       for (const t of trail) t.life -= 0.03
       for (let i = trail.length - 1; i >= 0; i--) if (trail[i].life <= 0) trail.splice(i, 1)
 
-      // в режиме «Рисование» частицы не реагируют на курсор — звёзды можно соединять
-      const drawingMode = isPlayground && playgroundMode === "draw"
-
       for (const p of particles) {
         p.pulsePhase += p.pulseSpeed
         p.r = p.baseR * (1 + Math.sin(p.pulsePhase) * 0.25)
 
-        if (!drawingMode) {
-          const dx = p.x - mouse.x
-          const dy = p.y - mouse.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < MOUSE_RADIUS && dist > 0) {
-            const force = ((MOUSE_RADIUS - dist) / MOUSE_RADIUS) * MOUSE_REPEL
-            p.vx += (dx / dist) * force * 0.1
-            p.vy += (dy / dist) * force * 0.1
-          }
+        const dx = p.x - mouse.x
+        const dy = p.y - mouse.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < MOUSE_RADIUS && dist > 0) {
+          const force = ((MOUSE_RADIUS - dist) / MOUSE_RADIUS) * MOUSE_REPEL
+          p.vx += (dx / dist) * force * 0.1
+          p.vy += (dy / dist) * force * 0.1
+        }
 
-          if (ripple.life > 0) {
-            const rdx = p.x - ripple.x
-            const rdy = p.y - ripple.y
-            const rd = Math.sqrt(rdx * rdx + rdy * rdy)
-            if (rd < RIPPLE_RADIUS && rd > 0) {
-              const rf = (1 - rd / RIPPLE_RADIUS) * ripple.life * RIPPLE_FORCE
-              p.vx += (rdx / rd) * rf * 0.1
-              p.vy += (rdy / rd) * rf * 0.1
-            }
+        if (ripple.life > 0) {
+          const rdx = p.x - ripple.x
+          const rdy = p.y - ripple.y
+          const rd = Math.sqrt(rdx * rdx + rdy * rdy)
+          if (rd < RIPPLE_RADIUS && rd > 0) {
+            const rf = (1 - rd / RIPPLE_RADIUS) * ripple.life * RIPPLE_FORCE
+            p.vx += (rdx / rd) * rf * 0.1
+            p.vy += (rdy / rd) * rf * 0.1
           }
         }
 
-        if (drawingMode) {
-          // плавное затухание: звёзды почти стоят на месте
-          p.vx *= 0.97
-          p.vy *= 0.97
-          if (Math.abs(p.vx) < 0.02) p.vx = 0
-          if (Math.abs(p.vy) < 0.02) p.vy = 0
-          p.x += p.vx
-          p.y += p.vy
-        } else {
-          p.x += p.vx
-          p.y += p.vy
-          p.vx *= 0.98
-          p.vy *= 0.98
-          if (Math.abs(p.vx) < 0.05) p.vx += (Math.random() - 0.5) * 0.1
-          if (Math.abs(p.vy) < 0.05) p.vy += (Math.random() - 0.5) * 0.1
-        }
+        p.x += p.vx
+        p.y += p.vy
+        p.vx *= 0.98
+        p.vy *= 0.98
+        if (Math.abs(p.vx) < 0.05) p.vx += (Math.random() - 0.5) * 0.1
+        if (Math.abs(p.vy) < 0.05) p.vy += (Math.random() - 0.5) * 0.1
         p.y -= scrollDelta * 0.15
         if (p.x < 0) p.x = w
         if (p.x > w) p.x = 0
         if (p.y < 0) p.y = h
         if (p.y > h) p.y = 0
       }
-
-      // PATCH (normcontrol-kb): линии между частицами полностью убраны — по просьбе
-      // (остаются только сами частицы, glow у курсора, точки шлейфа и круги клика)
-
-      // PATCH (normcontrol-kb): линии от курсора к частицам тоже убраны
 
       for (const t of trail) {
         if (t.life <= 0) continue
@@ -763,19 +244,14 @@ BackgroundParticles.afterDOMLoaded = `
         ctx.stroke()
       }
 
-      // созвездия больше не рисуются силуэтами — только значки в углу
-      if (isPlayground) drawPlaygroundScene(ctx)
-
       for (const p of particles) {
         const distM = Math.hypot(p.x - mouse.x, p.y - mouse.y)
         const glowAmount = Math.max(0, 1 - distM / MOUSE_RADIUS)
         const distSel = Math.hypot(p.x - selectionCenter.x, p.y - selectionCenter.y)
         const selBoost = distSel < SELECTION_RADIUS ? (1 - distSel / SELECTION_RADIUS) * 0.4 : 0
 
-        if (!drawingMode && glowAmount > 0) {
-          // прогресс ≥ 5 кликов — свечение вокруг курсора заметно ярче
-          const glowBoost = bgClickCount >= 5 ? 1.6 : 1
-          ctx.globalAlpha = glowAmount * GLOW_ALPHA * glowBoost
+        if (glowAmount > 0) {
+          ctx.globalAlpha = glowAmount * GLOW_ALPHA
           ctx.fillStyle = p.color
           ctx.beginPath()
           ctx.arc(p.x, p.y, p.r * GLOW_SCALE, 0, Math.PI * 2)
@@ -806,18 +282,7 @@ BackgroundParticles.afterDOMLoaded = `
       window.removeEventListener("scroll", onScroll)
       document.removeEventListener("selectionchange", onSelectionChange)
       themeObserver.disconnect()
-      window.removeEventListener("mousemove", onPgMove)
-      window.removeEventListener("mousedown", onPgDown)
-      window.removeEventListener("mouseup", onPgUp)
-      for (const fn of pgCleanups) fn()
-      pgCleanups.length = 0
-      if (graphHiderCleanup) graphHiderCleanup()
     }
-
-    // прогресс и контролы песочницы: применяем при каждом запуске (в том числе после SPA-перехода)
-    applyProgress(false)
-    setupPlaygroundControls()
-    hideGraphOnPlayground()
   }
 
   // fade-in контента при SPA-переходах: перезапускаем переход через класс
@@ -831,18 +296,39 @@ BackgroundParticles.afterDOMLoaded = `
     })
   }
 
+  /**
+   * Морф DOM при SPA-переходе вставляет script-узлы, но браузер их не исполняет.
+   * Перезапускаем такие скрипты вручную (createElement + textContent исполняется)
+   * и помечаем узлы data-ran, чтобы не запускать дважды на первой загрузке.
+   */
+  function runArticleScripts() {
+    const article = document.querySelector("article")
+    if (!article) return
+    const nodes = article.querySelectorAll("script")
+    for (const old of nodes) {
+      if (old.dataset && old.dataset.ran) continue
+      const fresh = document.createElement("script")
+      for (const attr of Array.from(old.attributes)) fresh.setAttribute(attr.name, attr.value)
+      fresh.textContent = old.textContent
+      fresh.dataset.ran = "1"
+      old.parentNode.replaceChild(fresh, old)
+    }
+  }
+
   initParticles()
 
   document.addEventListener("nav", function() {
     destroyParticles()
     initParticles()
     restartFadeIn()
+    runArticleScripts()
   })
 
   // первый показ: иначе контент останется невидимым до первого перехода
   requestAnimationFrame(function() {
     const article = document.querySelector("article")
     if (article) article.classList.add("is-visible")
+    runArticleScripts()
   })
 })()
 `

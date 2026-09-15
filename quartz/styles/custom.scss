@@ -649,316 +649,113 @@ th {
   }
 }
 
-/* ===== Мини-игра «Астроном» ===== */
-.astronom-toast {
-  position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translate(-50%, 20px);
-  background: linear-gradient(135deg, #8a7ab8, #b86a8a);
-  color: #f2eef8;
-  padding: 1rem 1.5rem;
+/* ===== Мини-игра «Сквозь Зыбь» (/echelon) ===== */
+#echelon-wrap {
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  background: rgba(26, 22, 38, 0.6);
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(138, 122, 184, 0.4);
-  z-index: 200;
-  font-size: 0.95rem;
-  opacity: 0;
-  transition:
-    opacity 0.3s ease,
-    transform 0.3s ease;
-}
-
-.astronom-toast.visible {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
-
-#playground-btn {
-  position: fixed;
-  bottom: 2rem;
-  left: 2rem;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #8a7ab8, #b86a8a);
-  color: #f2eef8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.4rem;
-  text-decoration: none;
-  box-shadow: 0 4px 16px rgba(138, 122, 184, 0.5);
-  z-index: 50;
-  transition: transform 0.2s ease;
-  animation: playground-pulse 3s ease-in-out infinite;
-}
-
-@keyframes playground-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.08);
-  }
-}
-
-#playground-btn:hover {
-  transform: scale(1.15) rotate(15deg);
-}
-
-/* значки открытых созвездий — столбик в правом нижнем углу
-   (right: 5rem, чтобы не перекрывать кнопку «Наверх» справа и ↻ слева) */
-.constellation-badge {
-  position: fixed;
-  right: 5rem;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(242, 238, 248, 0.85);
-  border: 1px solid #e0d8ec;
-  font-size: 1.4rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 50;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
   backdrop-filter: blur(4px);
-  box-shadow: 0 4px 12px rgba(138, 122, 184, 0.2);
 }
 
-#badge-Сова {
-  bottom: 2rem;
+#echelon-hud {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  background: rgba(10, 10, 20, 0.8);
+  border-radius: 8px;
+  border: 1px solid rgba(200, 168, 120, 0.2);
+  flex-wrap: wrap;
+  font-family: "JetBrains Mono", monospace;
+  color: #f2eef8;
+  font-size: 0.95rem;
 }
 
-#badge-Лиса {
-  bottom: 5rem;
+#echelon-hud b {
+  color: #c8a878;
 }
 
-#badge-Медведь {
-  bottom: 8rem;
+#echelon-canvas {
+  display: block;
+  width: 100%;
+  height: 500px;
+  background: #000;
+  border-radius: 8px;
+  border: 1px solid rgba(200, 168, 120, 0.3);
+  cursor: crosshair;
+  touch-action: none;
+  margin-top: 1rem;
 }
 
-.constellation-badge:hover {
-  transform: scale(1.15);
-  box-shadow: 0 6px 20px rgba(138, 122, 184, 0.4);
+#echelon-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
-[saved-theme="dark"] .constellation-badge {
-  background: rgba(26, 22, 38, 0.85);
-  border-color: #2a2440;
-}
-
-.constellation-tip {
-  position: fixed;
-  bottom: 11.5rem;
-  right: 5rem;
-  padding: 0.7rem 1rem;
+#echelon-buttons button {
+  padding: 0.8rem 1.8rem;
+  border-radius: 24px;
+  border: 1px solid #c8a878;
   background: linear-gradient(135deg, #8a7ab8, #b86a8a);
   color: #f2eef8;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  opacity: 0;
-  transform: translateY(10px);
-  transition:
-    opacity 0.3s ease,
-    transform 0.3s ease;
-  z-index: 200;
-  box-shadow: 0 6px 20px rgba(138, 122, 184, 0.4);
-}
-
-.constellation-tip.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* кнопка сброса прогресса Астронома */
-#astronom-reset {
-  position: fixed;
-  bottom: 2rem;
-  right: 8rem;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(242, 238, 248, 0.7);
-  border: 1px solid #e0d8ec;
-  color: #8a7f9a;
+  font-family: inherit;
   font-size: 1rem;
   cursor: pointer;
-  z-index: 50;
-  opacity: 0.5;
-  transition:
-    opacity 0.2s ease,
-    transform 0.3s ease,
-    background 0.2s ease;
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  line-height: 1;
-}
-
-#astronom-reset:hover {
-  opacity: 1;
-  background: #b86a8a;
-  color: #f2eef8;
-  transform: rotate(-180deg);
-}
-
-[saved-theme="dark"] #astronom-reset {
-  background: rgba(26, 22, 38, 0.7);
-  border-color: #2a2440;
-  color: #8a7f9a;
-}
-
-[saved-theme="dark"] #astronom-reset:hover {
-  background: #d89ab8;
-  color: #1a1626;
-}
-
-/* панель песочницы (создаётся скриптом) */
-/* кнопки режимов песочницы */
-#playground-controls {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  position: relative;
-  z-index: 20;
-}
-
-#playground-controls button {
-  padding: 0.6rem 1.2rem;
-  border-radius: 24px;
-  border: 1px solid #e0d8ec;
-  background: rgba(242, 238, 248, 0.9);
-  color: #3a3448;
-  font-size: 0.9rem;
-  font-family: inherit;
-  cursor: pointer;
   transition: all 0.2s ease;
-  backdrop-filter: blur(4px);
 }
 
-#playground-controls button.active {
-  background: #8a7ab8;
-  color: #f2eef8;
-  border-color: #8a7ab8;
-  box-shadow: 0 4px 12px rgba(138, 122, 184, 0.3);
-}
-
-#playground-controls button:hover:not(.active) {
-  background: rgba(242, 238, 248, 1);
+#echelon-buttons button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(138, 122, 184, 0.15);
+  box-shadow: 0 6px 20px rgba(138, 122, 184, 0.5);
 }
 
-[saved-theme="dark"] #playground-controls button {
-  background: rgba(26, 22, 38, 0.9);
-  border-color: #2a2440;
-  color: #e8e0f2;
+#echelon-result {
+  margin-top: 1rem;
+  padding: 1rem 1.5rem;
+  border-radius: 10px;
+  text-align: center;
+  font-family: "Playfair Display", serif;
 }
 
-[saved-theme="dark"] #playground-controls button.active {
-  background: #b8a8d8;
-  color: #1a1626;
-  border-color: #b8a8d8;
+#echelon-result:empty {
+  display: none;
 }
 
-/* список сохранённых созвездий */
-#my-constellations {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: rgba(242, 238, 248, 0.6);
-  border-radius: 12px;
-  min-height: 60px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  font-size: 0.95rem;
+#echelon-result.result-win {
+  color: #c8a878;
+  font-size: 1.2rem;
 }
 
-#my-constellations:empty::after {
-  content: "Пока пусто. Создай первое созвездие!";
+#echelon-result.result-lose {
+  color: #b86a8a;
+  font-size: 1.2rem;
+}
+
+#echelon-result .result-info {
   color: #8a7f9a;
-  font-style: italic;
   font-size: 0.9rem;
 }
 
-[saved-theme="dark"] #my-constellations {
-  background: rgba(26, 22, 38, 0.6);
+#echelon-record {
+  margin-top: 1rem;
+  text-align: center;
+  color: #8a7f9a;
+  font-size: 0.9rem;
+  font-style: italic;
 }
 
-/* ===== Песочница: прячем граф и правый сайдбар ===== */
-body[data-slug="playground"] .graph,
-body[data-slug="playground"] .graph-container,
-body[data-slug="playground"] .graph-outer,
-body[data-slug="playground"] .global-graph-outer,
-body[data-slug="playground"] .sidebar.right,
-body.is-playground .graph,
-body.is-playground .graph-container,
-body.is-playground .graph-outer,
-body.is-playground .global-graph-outer,
-body.is-playground .sidebar.right,
-body.playground-page .graph,
-body.playground-page .graph-container,
-body.playground-page .graph-outer,
-body.playground-page .global-graph-outer,
-body.playground-page .sidebar.right {
-  display: none !important;
-}
+@media (max-width: 768px) {
+  #echelon-canvas {
+    height: 350px;
+  }
 
-/* сетка страницы: две колонки вместо трёх, иначе справа останется пустая колонка 320px */
-body[data-slug="playground"] .page > #quartz-body,
-body.is-playground .page > #quartz-body,
-body.playground-page .page > #quartz-body {
-  position: relative;
-  z-index: 10;
-  grid-template-columns: auto 1fr !important;
-  grid-template-areas:
-    "grid-sidebar-left grid-header"
-    "grid-sidebar-left grid-center"
-    "grid-sidebar-left grid-footer" !important;
-}
-
-body[data-slug="playground"] .center,
-body.is-playground .center,
-body.playground-page .center {
-  max-width: 100% !important;
-  padding-right: 1rem !important;
-}
-
-/* canvas под контентом, кнопки и текст — поверх */
-body[data-slug="playground"] #bg-particles,
-body.is-playground #bg-particles,
-body.playground-page #bg-particles {
-  z-index: 0;
-  opacity: 1;
-}
-
-/* статья песочницы */
-body[data-slug="playground"] article,
-body.is-playground article,
-body.playground-page article {
-  position: relative;
-  z-index: 10;
-  background: rgba(242, 238, 248, 0.85);
-  backdrop-filter: blur(6px);
-  border-radius: 12px;
-  padding: 2rem;
-  max-width: 900px;
-  margin: 4rem auto;
-}
-
-[saved-theme="dark"] body[data-slug="playground"] article,
-[saved-theme="dark"] body.is-playground article,
-[saved-theme="dark"] body.playground-page article {
-  background: rgba(26, 22, 38, 0.85);
+  #echelon-hud {
+    font-size: 0.8rem;
+  }
 }
 
 /* ===== Эшелон 4: мобильная версия и печать ===== */
