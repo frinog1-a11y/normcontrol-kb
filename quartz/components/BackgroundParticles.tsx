@@ -516,6 +516,9 @@ BackgroundParticles.afterDOMLoaded = `
       })
     }
     for (const p of particles) p.r = p.baseR
+    // «свободный полёт» (прогресс ≥ 100) и песочница: 200 звёзд с самого старта
+    if (isPlayground) addStars(200 - particles.length)
+    else if (bgClickCount >= 100) addStars(110)
 
     const themeObserver = new MutationObserver(function() {
       const next = currentColors()
