@@ -376,6 +376,7 @@
       fire: 1.5,
       color: "#5a9a8a",
       shape: "circle",
+      special: 5,
     },
     {
       name: "Астральный Дракон",
@@ -384,8 +385,17 @@
       fire: 1.2,
       color: "#6a4a7a",
       shape: "diamond",
+      special: 6,
     },
-    { name: "Сплетающий Узлы", hp: 50, speed: 2.5, fire: 1.0, color: "#8a2a2a", shape: "poly" },
+    {
+      name: "Сплетающий Узлы",
+      hp: 50,
+      speed: 2.5,
+      fire: 1.0,
+      color: "#8a2a2a",
+      shape: "poly",
+      special: 4,
+    },
     {
       name: "Матриарх Тлена",
       hp: 60,
@@ -394,8 +404,17 @@
       color: "#0a0a0a",
       color2: "#8a2a2a",
       shape: "silhouette",
+      special: 7,
     },
-    { name: "Сердце Бездны", hp: 80, speed: 0, fire: 0.6, color: "#c8a878", shape: "sphere" },
+    {
+      name: "Сердце Бездны",
+      hp: 80,
+      speed: 1.0,
+      fire: 0.6,
+      color: "#c8a878",
+      shape: "sphere",
+      special: 8,
+    },
   ]
 
   // ===== ЛОРНЫЕ ЗАПИСКИ =====
@@ -509,24 +528,50 @@
     if (state.boss) {
       for (var k = state.boss.bullets.length - 1; k >= 0; k--) {
         var bb = state.boss.bullets[k]
+        var s = state.ship
+        if (bb.type === "child") {
+          // лёгкое самонаведение на флагман
+          var hy = s.y - bb.y
+          bb.vy = (bb.vy || 0) + Math.max(-1.2, Math.min(1.2, hy * 0.02))
+          bb.y += bb.vy * dt * 60 * 0.5
+        }
         bb.x += bb.vx * dt * 60
-        if (bb.x < -30) {
+        if (bb.x < -40) {
           state.boss.bullets.splice(k, 1)
           continue
         }
-        var s = state.ship
         var sdx = bb.x - s.x
         var sdy = bb.y - s.y
-        if (Math.sqrt(sdx * sdx + sdy * sdy) < 22) {
+        var reach = bb.type === "wave" ? 20 : bb.type === "child" ? 14 : 22
+        if (Math.sqrt(sdx * sdx + sdy * sdy) < reach) {
           state.boss.bullets.splice(k, 1)
-          state.health -= 10
-          state.corruption += 2
-          playRift()
-          if (state.health <= 0) {
-            state.health = 0
-            updateHUD()
-            endGame(false, "Ядро флагмана не выдержало…")
-            return
+          if (bb.type === "wave") {
+            // волна не бьёт, но тормозит флагман на секунду
+            s.slowed = Date.now() + 1000
+            playTlen()
+          } else if (bb.type === "web") {
+            // паутина запутывает на 1.5 секунды
+            s.slowed = Date.now() + 1500
+            playTlen()
+          } else if (bb.type === "child") {
+            state.health -= 5
+            playRift()
+            if (state.health <= 0) {
+              state.health = 0
+              updateHUD()
+              endGame(false, "Дитя Тлена добралось до ядра…")
+              return
+            }
+          } else {
+            state.health -= 10
+            state.corruption += 2
+            playRift()
+            if (state.health <= 0) {
+              state.health = 0
+              updateHUD()
+              endGame(false, "Ядро флагмана не выдержало…")
+              return
+            }
           }
         }
       }
@@ -558,12 +603,50 @@
       for (var j = 0; j < state.boss.bullets.length; j++) {
         var bb = state.boss.bullets[j]
         ctx.save()
-        ctx.shadowColor = state.boss.color
-        ctx.shadowBlur = 14
-        ctx.fillStyle = state.boss.color2 || state.boss.color
-        ctx.beginPath()
-        ctx.arc(bb.x, bb.y, 6, 0, Math.PI * 2)
-        ctx.fill()
+        if (bb.type === "wave") {
+          ctx.shadowColor = "#5a9a8a"
+          ctx.shadowBlur = 18
+          ctx.strokeStyle = "#5a9a8a"
+          ctx.lineWidth = 2
+          ctx.globalAlpha = 0.85
+          ctx.beginPath()
+          ctx.arc(bb.x, bb.y, 16, 0, Math.PI * 2)
+          ctx.stroke()
+          ctx.globalAlpha = 0.25
+          ctx.beginPath()
+          ctx.arc(bb.x, bb.y, 24 + 4 * Math.sin(performance.now() / 200), 0, Math.PI * 2)
+          ctx.stroke()
+        } else if (bb.type === "web") {
+          ctx.shadowColor = "#f2eef8"
+          ctx.shadowBlur = 12
+          ctx.strokeStyle = "rgba(242, 238, 248, 0.9)"
+          ctx.lineWidth = 1.4
+          ctx.beginPath()
+          ctx.moveTo(bb.x + 9, bb.y - 9)
+          ctx.lineTo(bb.x - 9, bb.y + 9)
+          ctx.stroke()
+          ctx.beginPath()
+          ctx.moveTo(bb.x + 9, bb.y + 9)
+          ctx.lineTo(bb.x - 9, bb.y - 9)
+          ctx.stroke()
+        } else if (bb.type === "child") {
+          ctx.shadowColor = "#8a2a2a"
+          ctx.shadowBlur = 16
+          ctx.fillStyle = "#0a0a0a"
+          ctx.beginPath()
+          ctx.arc(bb.x, bb.y, 8, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.strokeStyle = "rgba(138, 42, 42, 0.9)"
+          ctx.lineWidth = 1.2
+          ctx.stroke()
+        } else {
+          ctx.shadowColor = state.boss.color
+          ctx.shadowBlur = 14
+          ctx.fillStyle = state.boss.color2 || state.boss.color
+          ctx.beginPath()
+          ctx.arc(bb.x, bb.y, 6, 0, Math.PI * 2)
+          ctx.fill()
+        }
         ctx.restore()
       }
     }
@@ -575,12 +658,21 @@
     state.boss = {
       hp: def.hp,
       maxHp: def.hp,
+      index: Math.max(0, Math.min(BOSSES.length - 1, idx)),
       x: W - 40,
       y: H / 2,
-      vy: def.speed,
+      vy: def.speed * (Math.random() < 0.5 ? 1 : -1),
+      vx: 0.5,
       speed: def.speed,
       fireTimer: 0,
       fireInterval: def.fire,
+      specialTimer: 0,
+      specialInterval: def.special || 6,
+      invuln: 0,
+      teleport: 0,
+      fade: 0,
+      entered: false,
+      effects: [],
       color: def.color,
       color2: def.color2,
       shape: def.shape,
@@ -595,6 +687,7 @@
 
   function damageBoss(amount) {
     if (!state.boss) return
+    if (state.boss.invuln > 0) return
     state.boss.hp -= amount
     state.faith += 2
     playHitRift()
@@ -635,19 +728,134 @@
     playRift()
   }
 
+  /** Уникальная атака босса — у каждого своя. */
+  function bossSpecial(idx) {
+    var bs = state.boss
+    if (!bs) return
+    if (idx === 0) {
+      // Хранительница: волна — 3–4 медленных кольца на разной высоте
+      var count = Math.random() < 0.5 ? 3 : 4
+      for (var i = 0; i < count; i++) {
+        bs.bullets.push({
+          type: "wave",
+          x: bs.x - 30,
+          y: 110 + ((H - 220) * (i + 0.5)) / count,
+          vx: -2,
+          r: 16,
+        })
+      }
+    } else if (idx === 1) {
+      // Дракон: прыжок во времени — исчезает и появляется в другой точке
+      bs.teleport = 0.5
+      bs.invuln = 0.5
+      bs.effects.push({ type: "flash", x: bs.x, y: bs.y, life: 1, color: "#6a4a7a" })
+    } else if (idx === 2) {
+      // Сплетающий: паутина — три линии веером (-30°, 0°, +30°)
+      var angles = [-30, 0, 30]
+      for (var a = 0; a < angles.length; a++) {
+        var rad = (angles[a] * Math.PI) / 180
+        bs.bullets.push({
+          type: "web",
+          x: bs.x - 30,
+          y: bs.y,
+          vx: -2.5 * Math.cos(rad),
+          vy: 2.5 * Math.sin(rad),
+        })
+      }
+    } else if (idx === 3) {
+      // Матриарх: зов детей — два тёмных снаряда с самонаведением
+      for (var c = 0; c < 2; c++) {
+        bs.bullets.push({
+          type: "child",
+          x: bs.x - 30,
+          y: bs.y + (c === 0 ? -30 : 30),
+          vx: -2,
+          vy: 0,
+          r: 8,
+        })
+      }
+    } else {
+      // Сердце Бездны: вспышка — расширяющееся кольцо
+      bs.effects.push({ type: "ring", x: bs.x, y: bs.y, r: 0, life: 1, hit: false })
+    }
+    playRift()
+  }
+
+  /** Эффекты босса: кольца-вспышки и вспышки телепорта. */
+  function updateBossEffects(dt) {
+    var bs = state.boss
+    if (!bs) return
+    var s = state.ship
+    for (var i = bs.effects.length - 1; i >= 0; i--) {
+      var e = bs.effects[i]
+      if (e.type === "ring") {
+        e.r += 400 * dt
+        if (!e.hit) {
+          var dx = s.x - e.x
+          var dy = s.y - e.y
+          var d = Math.sqrt(dx * dx + dy * dy)
+          if (Math.abs(d - e.r) < 26) {
+            e.hit = true
+            state.health -= 15
+            state.corruption += 3
+            playRift()
+            if (state.health <= 0) {
+              state.health = 0
+              updateHUD()
+              endGame(false, "Вспышка Бездны испепелила корпус…")
+              return
+            }
+          }
+        }
+        if (e.r > 210) bs.effects.splice(i, 1)
+      } else {
+        e.life -= dt * 1.6
+        if (e.life <= 0) bs.effects.splice(i, 1)
+      }
+    }
+  }
+
   function updateBoss(dt) {
     var bs = state.boss
     if (!bs) return
     // управление флагманом работает и в бою
     if (!updateShip(dt)) return
-    // выход на арену из-за правого края
-    if (bs.x > W - 150) {
-      bs.x -= 170 * dt
-      if (bs.x < W - 150) bs.x = W - 150
+    // Дракон: пока телепортируется — невидим, не двигается и не стреляет
+    if (bs.teleport > 0) {
+      bs.teleport -= dt
+      if (bs.teleport <= 0) {
+        bs.teleport = 0
+        bs.y = 120 + Math.random() * (H - 240)
+        bs.vy = bs.speed * (Math.random() < 0.5 ? 1 : -1)
+        bs.effects.push({ type: "flash", x: bs.x, y: bs.y, life: 1, color: "#6a4a7a" })
+      }
+      updateBossEffects(dt)
+      updateBullets(dt)
+      updateHUD()
+      return
     }
-    // финальный босс медленно всплывает к центру и стоит
+    // выход на арену из-за правого края (один раз)
+    if (!bs.entered) {
+      bs.x -= 170 * dt
+      if (bs.x <= W - 150) {
+        bs.x = W - 150
+        bs.entered = true
+      }
+    } else if (bs.index === 4) {
+      // Сердце Бездны ходит и по горизонтали, в правой трети экрана
+      bs.x += bs.vx * dt * 60 * 0.6
+      if (bs.x < W - 200) {
+        bs.x = W - 200
+        bs.vx = Math.abs(bs.vx)
+      }
+      if (bs.x > W - 80) {
+        bs.x = W - 80
+        bs.vx = -Math.abs(bs.vx)
+      }
+    }
+    // движение по вертикали с отскоком от границ
     if (bs.speed > 0) {
-      bs.y += bs.vy * dt * 60 * 0.2
+      bs.y += bs.vy * dt * 60 * 0.6
       if (bs.y < 120) {
         bs.y = 120
         bs.vy = Math.abs(bs.vy)
@@ -657,13 +865,26 @@
         bs.vy = -Math.abs(bs.vy)
       }
     }
+    // гравитация Сердца Бездны: медленно притягивает флагман
+    var s = state.ship
+    if (bs.index === 4) {
+      s.vx += (bs.x - s.x) * 0.0005
+      s.vy += (bs.y - s.y) * 0.0005
+    }
     bs.fireTimer += dt
     if (bs.fireTimer >= bs.fireInterval) {
       bs.fireTimer = 0
       bossFire()
     }
+    // уникальная механика босса по таймеру
+    bs.specialTimer += dt
+    if (bs.specialTimer >= bs.specialInterval) {
+      bs.specialTimer = 0
+      bossSpecial(bs.index)
+    }
+    if (bs.invuln > 0) bs.invuln -= dt
+    updateBossEffects(dt)
     // таран корпусом
-    var s = state.ship
     var dx = bs.x - s.x
     var dy = bs.y - s.y
     if (Math.sqrt(dx * dx + dy * dy) < 60) {
@@ -683,7 +904,34 @@
   function drawBoss() {
     var bs = state.boss
     if (!bs) return
+    // эффекты: кольца-вспышки и вспышки телепорта
+    for (var ei = 0; ei < bs.effects.length; ei++) {
+      var ef = bs.effects[ei]
+      ctx.save()
+      if (ef.type === "ring") {
+        ctx.globalAlpha = Math.max(0, 1 - ef.r / 210)
+        ctx.strokeStyle = "#c8a878"
+        ctx.lineWidth = 3
+        ctx.shadowColor = "#c8a878"
+        ctx.shadowBlur = 24
+        ctx.beginPath()
+        ctx.arc(ef.x, ef.y, ef.r, 0, Math.PI * 2)
+        ctx.stroke()
+      } else {
+        ctx.globalAlpha = Math.max(0, ef.life)
+        ctx.shadowColor = ef.color
+        ctx.shadowBlur = 30
+        ctx.strokeStyle = ef.color
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(ef.x, ef.y, 60 * (1.6 - ef.life), 0, Math.PI * 2)
+        ctx.stroke()
+      }
+      ctx.restore()
+    }
     ctx.save()
+    // Дракон в прыжке во времени — тело невидимо
+    ctx.globalAlpha = bs.teleport > 0 ? 0 : 1
     ctx.shadowColor = bs.color
     ctx.shadowBlur = glowFor() + 10
     ctx.fillStyle = bs.color
@@ -730,6 +978,21 @@
       ctx.beginPath()
       ctx.arc(bs.x, bs.y, 60, 0, Math.PI * 2)
       ctx.fill()
+      // алое свечение и лёгкое «гравитационное» искажение вокруг Сердца
+      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(performance.now() / 300)
+      ctx.strokeStyle = "#8a2a2a"
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(bs.x, bs.y, 72 + 6 * Math.sin(performance.now() / 500), 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.globalAlpha = 0.22
+      ctx.fillStyle = "#8a2a2a"
+      for (var ni = 0; ni < 8; ni++) {
+        var na = (Math.PI * 2 * ni) / 8 + performance.now() / 900
+        ctx.beginPath()
+        ctx.arc(bs.x + Math.cos(na) * 94, bs.y + Math.sin(na) * 94, 2, 0, Math.PI * 2)
+        ctx.fill()
+      }
     }
     ctx.restore()
 
@@ -1398,6 +1661,11 @@
     s.vy += ay * 0.5
     s.vx *= 0.92
     s.vy *= 0.92
+    // «запутан» волной или паутиной: движение почти гаснет
+    if (s.slowed && Date.now() < s.slowed) {
+      s.vx *= 0.3
+      s.vy *= 0.3
+    }
     s.x += s.vx
     s.y += s.vy
     if (s.x < 40) {
