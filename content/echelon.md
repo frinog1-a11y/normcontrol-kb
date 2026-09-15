@@ -20,6 +20,7 @@ tags: [игра, эшелон]
   <canvas id="echelon-canvas" width="900" height="500"></canvas>
   <div id="echelon-buttons">
     <button id="btn-start">▶ Начать</button>
+    <button id="btn-fire">🔥 Огонь</button>
     <button id="btn-restart" style="display:none">↻ Заново</button>
   </div>
   <div id="echelon-result"></div>

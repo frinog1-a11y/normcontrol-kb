@@ -674,6 +674,132 @@ th {
   transform: translate(-50%, 0);
 }
 
+/* ===== Лорные записки ===== */
+.lore-note-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 20, 0.85);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.lore-note-overlay.visible {
+  opacity: 1;
+}
+
+.lore-note {
+  max-width: 600px;
+  width: 100%;
+  padding: 2.5rem;
+  background: #faf6f0;
+  border: 2px solid #c8a878;
+  border-radius: 12px;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+
+.lore-note h2 {
+  font-family: "Playfair Display", serif;
+  color: #8a2a2a;
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.lore-note p {
+  font-family: "Inter", sans-serif;
+  color: #3a3448;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.lore-note .signature {
+  color: #8a7f9a;
+  font-style: italic;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+.lore-note button {
+  margin-top: 1.5rem;
+  padding: 0.7rem 1.5rem;
+  background: linear-gradient(135deg, #8a7ab8, #b86a8a);
+  color: #f2eef8;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.lore-note button:hover {
+  transform: translateY(-2px);
+}
+
+/* ===== Финальный «мультик» ===== */
+.cinematic-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 500;
+  background: #000;
+}
+
+.cinematic-buttons {
+  position: fixed;
+  bottom: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+  z-index: 510;
+}
+
+.cinematic-buttons button {
+  padding: 0.8rem 1.6rem;
+  border-radius: 24px;
+  border: 1px solid #c8a878;
+  background: linear-gradient(135deg, #8a7ab8, #b86a8a);
+  color: #f2eef8;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.cinematic-buttons button:hover {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  .lore-note {
+    padding: 1.5rem;
+  }
+
+  .lore-note h2 {
+    font-size: 1.1rem;
+  }
+
+  .cinematic-buttons {
+    bottom: 1.5rem;
+    flex-direction: column;
+    width: 80%;
+    left: 10%;
+    transform: none;
+  }
+}
+
 /* ===== Мини-игра «Сквозь Зыбь» (/echelon) ===== */
 #echelon-wrap {
   max-width: 1000px;
