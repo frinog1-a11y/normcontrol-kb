@@ -26,6 +26,7 @@ import ConditionalRender from "./ConditionalRender"
 import BackToTop from "./BackToTop"
 import EditOnGitHub from "./EditOnGitHub"
 import BackgroundParticles from "./BackgroundParticles"
+import ReadingProgress from "./ReadingProgress"
 
 export {
   ArticleTitle,
@@ -56,4 +57,5 @@ export {
   BackToTop,
   EditOnGitHub,
   BackgroundParticles,
+  ReadingProgress,
 }

@@ -181,11 +181,11 @@ body {
   height: 100vh;
   pointer-events: none;
   z-index: -1;
-  opacity: 0.7;
+  opacity: 1;
 }
 
 [saved-theme="dark"] #bg-particles {
-  opacity: 0.9;
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -206,19 +206,269 @@ body {
 .graph-container {
   min-height: 400px;
   border-radius: 8px;
-  background: rgba(242, 238, 248, 0.5);
+  background: rgba(242, 238, 248, 0.6);
   border: 1px solid #e0d8ec;
   backdrop-filter: blur(4px);
 }
 
 [saved-theme="dark"] .graph-container {
-  background: rgba(26, 22, 38, 0.5);
+  background: rgba(26, 22, 38, 0.6);
   border: 1px solid #2a2440;
 }
 
-/* ===== Палитра категорий графа ===== */
-// узлы графа красятся по разделам базы в самом скрипте графа
-// (quartz/components/scripts/graph.inline.ts, функция getNodeColor)
+/* ===== Эшелон 1: появление контента, прогресс, чек-листы, выделение ===== */
+.page > #quartz-body {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+a {
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+article h1,
+article h2,
+article h3 {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* полоса прогресса чтения (создаётся скриптом ReadingProgress.tsx) */
+#reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0%;
+  height: 3px;
+  background: linear-gradient(90deg, #8a7ab8, #b86a8a);
+  z-index: 100;
+  transition: width 0.1s ease-out;
+  pointer-events: none;
+}
+
+/* чек-листы */
+article ul > li > input[type="checkbox"] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #8a7ab8;
+  border-radius: 4px;
+  margin-right: 0.5rem;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+}
+
+article ul > li > input[type="checkbox"]:checked {
+  background: #8a7ab8;
+  border-color: #8a7ab8;
+}
+
+article ul > li > input[type="checkbox"]:checked::after {
+  content: "✓";
+  position: absolute;
+  top: -3px;
+  left: 1px;
+  color: #f2eef8;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+article ul > li > input[type="checkbox"]:hover {
+  border-color: #b86a8a;
+}
+
+/* выделение текста */
+::selection {
+  background: rgba(184, 106, 138, 0.3);
+  color: #1e1a30;
+}
+
+::-moz-selection {
+  background: rgba(184, 106, 138, 0.3);
+  color: #1e1a30;
+}
+
+[saved-theme="dark"] ::selection {
+  background: rgba(184, 106, 138, 0.4);
+  color: #f2eef8;
+}
+
+/* плавное раскрытие папок в проводнике */
+.explorer .folder-container {
+  transition:
+    max-height 0.3s ease,
+    opacity 0.2s ease;
+  overflow: hidden;
+}
+
+.explorer .folder-icon {
+  transition: transform 0.2s ease;
+}
+
+/* ===== Эшелон 2: футер, хлебные крошки, тени, смена темы ===== */
+footer {
+  border-top: 1px solid #e0d8ec;
+  padding: 2rem 0;
+  margin-top: 4rem;
+  color: #5a4f68;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+footer::before {
+  content: "✦";
+  color: #8a7ab8;
+  display: block;
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+[saved-theme="dark"] footer {
+  border-top: 1px solid #2a2440;
+  color: #8a7f9a;
+}
+
+/* иконки в хлебных крошках */
+.breadcrumb-container a[href*="02_Ошибки"]::before {
+  content: "⚠ ";
+}
+
+.breadcrumb-container a[href*="03_ГОСТы"]::before {
+  content: "📘 ";
+}
+
+.breadcrumb-container a[href*="04_Документы"]::before {
+  content: "📄 ";
+}
+
+/* плавная смена темы и поворот переключателя */
+body,
+.page,
+article {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+button.darkmode {
+  transition: transform 0.3s ease;
+}
+
+button.darkmode:hover {
+  transform: rotate(20deg);
+}
+
+/* мягкие тени */
+article blockquote,
+article pre,
+article table {
+  box-shadow: 0 2px 8px rgba(138, 122, 184, 0.08);
+  border-radius: 6px;
+}
+
+article img {
+  box-shadow: 0 2px 12px rgba(138, 122, 184, 0.12);
+  border-radius: 8px;
+}
+
+[saved-theme="dark"] article blockquote,
+[saved-theme="dark"] article pre,
+[saved-theme="dark"] article table {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== Эшелон 3: буквица, активный раздел, ссылки, разделители ===== */
+article > p:first-of-type::first-letter {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 3.2rem;
+  font-weight: 600;
+  float: left;
+  line-height: 0.9;
+  margin: 0.1rem 0.5rem 0 0;
+  color: #8a7ab8;
+}
+
+.explorer .active,
+.explorer a[aria-current="page"] {
+  background: rgba(138, 122, 184, 0.12);
+  border-left: 3px solid #8a7ab8;
+  padding-left: calc(0.5rem - 3px);
+  border-radius: 4px;
+}
+
+article a {
+  position: relative;
+  text-decoration: none;
+  background-image: linear-gradient(#b86a8a, #b86a8a);
+  background-position: 0% 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition: background-size 0.3s ease;
+}
+
+article a:hover {
+  background-size: 100% 1px;
+}
+
+article hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #8a7ab8, transparent);
+  margin: 2rem 0;
+}
+
+article h2 {
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+article h2::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, #8a7ab8, #b86a8a);
+  border-radius: 1px;
+}
+
+/* уважаем системную настройку «меньше движения» */
+@media (prefers-reduced-motion: reduce) {
+  .page > #quartz-body,
+  article h1,
+  article h2,
+  article h3 {
+    animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
 
 /* ===== Хлебные крошки ===== */
 .breadcrumb-container {
@@ -242,38 +492,36 @@ body {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
-  z-index: 100;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--secondary);
-  color: var(--light);
+  background: #8a7ab8;
+  color: #f2eef8;
   border: none;
   cursor: pointer;
-  font-size: 1.2rem;
-  box-shadow: 0 2px 8px rgba(58, 52, 72, 0.18);
+  box-shadow: 0 4px 12px rgba(138, 122, 184, 0.3);
   opacity: 0;
-  visibility: hidden;
-  transform: translateY(8px);
+  transform: translateY(10px);
   transition:
-    opacity 0.2s ease,
+    opacity 0.3s ease,
     transform 0.2s ease,
-    visibility 0.2s ease,
-    background-color 0.2s ease;
+    background 0.2s ease;
+  pointer-events: none;
+  z-index: 50;
 }
 
 #back-to-top.visible {
   opacity: 1;
-  visibility: visible;
   transform: translateY(0);
+  pointer-events: auto;
 }
 
 #back-to-top:hover {
-  transform: translateY(-3px);
-  background: var(--tertiary);
+  background: #b86a8a;
+  transform: translateY(-2px) scale(1.05);
 }
 
 /* ===== Плавные переходы ===== */
@@ -338,4 +586,78 @@ th {
 .edit-on-github a:hover {
   color: var(--tertiary);
   border-color: var(--tertiary);
+}
+
+/* ===== Эшелон 4: мобильная версия и печать ===== */
+@media (max-width: 768px) {
+  article h1 {
+    font-size: 1.6rem;
+  }
+
+  article h2 {
+    font-size: 1.3rem;
+  }
+
+  article h3 {
+    font-size: 1.1rem;
+  }
+
+  .page {
+    padding: 0 1rem;
+  }
+
+  .graph-container {
+    min-height: 250px;
+  }
+
+  #reading-progress {
+    height: 2px;
+  }
+
+  #back-to-top {
+    width: 40px;
+    height: 40px;
+    bottom: 1rem;
+    right: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .graph-container {
+    display: none;
+  }
+}
+
+@media print {
+  .sidebar,
+  .graph-container,
+  #back-to-top,
+  #reading-progress,
+  #bg-particles,
+  footer,
+  .breadcrumb-container {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  article {
+    max-width: 100%;
+    font-size: 11pt;
+  }
+
+  article h1,
+  article h2,
+  article h3 {
+    page-break-after: avoid;
+  }
+
+  article blockquote,
+  article pre,
+  article table {
+    page-break-inside: avoid;
+  }
 }

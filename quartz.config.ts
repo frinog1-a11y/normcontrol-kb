@@ -37,13 +37,13 @@ const config: QuartzConfig = {
         lightMode: {
           light: "#f2eef8", // фон: светло-лавандовый
           lightgray: "#e0d8ec", // границы: сиреневый
-          gray: "#6a5f78", // второстепенный текст
+          gray: "#5a4f68", // второстепенный текст
           darkgray: "#2e2840", // основной текст
           dark: "#1e1a30", // заголовки
-          secondary: "#6a5a8a", // ссылки
-          tertiary: "#b86a8a", // акценты
-          highlight: "rgba(184, 106, 138, 0.15)", // подсветка поиска
-          textHighlight: "#b86a8a88",
+          secondary: "#5a4a7a", // ссылки
+          tertiary: "#a85a7a", // акценты
+          highlight: "rgba(168, 90, 122, 0.15)", // подсветка поиска
+          textHighlight: "#a85a7a88",
         },
         darkMode: {
           light: "#1a1626", // фон: тёмный фиолетовый
@@ -83,6 +83,9 @@ const config: QuartzConfig = {
     emitters: [
       Plugin.AliasRedirects(),
       Plugin.ComponentResources(),
+      // PATCH (normcontrol-kb): 404 из content/404.md должен побеждать служебную страницу,
+      // поэтому NotFoundPage идёт до ContentPage
+      Plugin.NotFoundPage(),
       Plugin.ContentPage(),
       Plugin.FolderPage(),
       Plugin.TagPage(),
@@ -93,7 +96,6 @@ const config: QuartzConfig = {
       Plugin.Assets(),
       Plugin.Static(),
       Plugin.Favicon(),
-      Plugin.NotFoundPage(),
       // Comment out CustomOgImages to speed up build time
       Plugin.CustomOgImages(),
     ],

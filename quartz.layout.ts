@@ -5,7 +5,12 @@ import * as Component from "./quartz/components"
 export const sharedPageComponents: SharedLayout = {
   head: Component.Head(),
   header: [],
-  afterBody: [Component.BackgroundParticles(), Component.EditOnGitHub(), Component.BackToTop()],
+  afterBody: [
+    Component.BackgroundParticles(),
+    Component.ReadingProgress(),
+    Component.EditOnGitHub(),
+    Component.BackToTop(),
+  ],
   footer: Component.Footer({
     links: {
       "Репозиторий базы": "https://github.com/frinog1-a11y/normcontrol-kb",

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f2eef8"/>
+      <stop offset="100%" stop-color="#e0d8ec"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="150" cy="120" r="70" fill="#8a7ab8" opacity="0.85"/>
+  <path d="M120 200 V120 L150 165 L180 120 V200" fill="none" stroke="#f2eef8" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="120" y="360" font-family="Georgia, serif" font-size="76" font-weight="600" fill="#1e1a30">Между строк чертежа</text>
+  <text x="122" y="418" font-family="Arial, sans-serif" font-size="32" fill="#5a4f68">Личный справочник нормоконтролёра</text>
+  <rect x="120" y="460" width="220" height="4" rx="2" fill="#a85a7a"/>
+  <text x="120" y="520" font-family="Arial, sans-serif" font-size="26" fill="#5a4a7a">24 ошибки · 29 типов документов · 46 ГОСТов</text>
+</svg>

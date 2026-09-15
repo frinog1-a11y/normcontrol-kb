@@ -172,6 +172,8 @@ export const CustomOgImages: QuartzEmitterPlugin<Partial<SocialImageOptions>> = 
                 <meta property="og:image:url" content={ogImagePath} />
                 <meta name="twitter:image" content={ogImagePath} />
                 <meta property="og:image:type" content={ogImageMimeType} />
+                {/* PATCH (normcontrol-kb): язык документа для соцсетей */}
+                <meta property="og:locale" content="ru_RU" />
               </>
             )
           },

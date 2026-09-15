@@ -171,8 +171,8 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
     .force("charge", forceManyBody().strength(-100 * repelForce))
     .force("center", forceCenter().strength(centerForce))
     .force("link", forceLink(graphData.links).distance(linkDistance))
-    // PATCH (normcontrol-kb): больше свободного места вокруг узла — граф не слипается
-    .force("collide", forceCollide<NodeData>((n) => nodeRadius(n) + 10).iterations(3))
+    // PATCH (normcontrol-kb): фиксированный радиус столкновения 12 — узлы не слипаются
+    .force("collide", forceCollide<NodeData>(12).iterations(3))
 
   const radius = (Math.min(width, height) / 2) * 0.8
   if (enableRadial) simulation.force("radial", forceRadial(radius).strength(0.2))
@@ -229,12 +229,12 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
 
   // PATCH (normcontrol-kb): цвета узлов по разделам базы — единая «астральная» палитра
   const getNodeColor = (slug: string) => {
-    if (slug.includes("02_Ошибки")) return "#b86a8a"
-    if (slug.includes("03_ГОСТы")) return "#8a7ab8"
-    if (slug.includes("04_Документы")) return "#6a9a9a"
-    if (slug.includes("05_Элементы")) return "#a89ac8"
-    if (slug.includes("99_Шаблоны")) return "#c8a878"
-    return "#a8a0b8"
+    if (slug.includes("02_Ошибки")) return "#a85a7a"
+    if (slug.includes("03_ГОСТы")) return "#7a6a9a"
+    if (slug.includes("04_Документы")) return "#5a7a7a"
+    if (slug.includes("05_Элементы")) return "#8a7ab8"
+    if (slug.includes("99_Шаблоны")) return "#a88858"
+    return "#8a80a0"
   }
 
   // calculate color
@@ -254,9 +254,9 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
     return graphData.links.filter((l) => l.source.id === d.id || l.target.id === d.id).length
   }
 
-  // PATCH (normcontrol-kb): размер узла заметно зависит от числа связей
+  // PATCH (normcontrol-kb): размер узла — min(6, 2 + sqrt(связей))
   function nodeRadius(d: NodeData) {
-    return 3 + Math.sqrt(linkCount(d)) * 1.6
+    return Math.min(6, 2 + Math.sqrt(linkCount(d)))
   }
 
   let hoveredNodeId: string | null = null
