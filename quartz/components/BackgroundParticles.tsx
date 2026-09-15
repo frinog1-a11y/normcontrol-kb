@@ -56,7 +56,7 @@ BackgroundParticles.afterDOMLoaded = `
     const RIPPLE_FORCE = 4
     const GLOW_SCALE = 3
     const GLOW_ALPHA = 0.25
-    const TRAIL_MAX = 30
+    const TRAIL_MAX = 48
     const SELECTION_RADIUS = 200
 
     function resize() {
@@ -73,8 +73,23 @@ BackgroundParticles.afterDOMLoaded = `
 
     function pushTrail() {
       if (mouse.x < -500) return
+      const last = trail[trail.length - 1]
+      if (!last) {
+        trail.push({ x: mouse.x, y: mouse.y, life: 1 })
+        return
+      }
+      // заполняем промежуток между событиями мыши: след не рвётся и не отстаёт
+      const dx = mouse.x - last.x
+      const dy = mouse.y - last.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (dist < 1.5) return
+      const steps = Math.min(40, Math.floor(dist / 4))
+      for (let i = 1; i <= steps; i++) {
+        trail.push({ x: last.x + (dx * i) / (steps + 1), y: last.y + (dy * i) / (steps + 1), life: 1 })
+      }
+      // последняя точка — всегда ровно под курсором
       trail.push({ x: mouse.x, y: mouse.y, life: 1 })
-      if (trail.length > TRAIL_MAX) trail.shift()
+      while (trail.length > TRAIL_MAX) trail.shift()
     }
 
     function onMouseMove(e) {
@@ -243,15 +258,6 @@ BackgroundParticles.afterDOMLoaded = `
         if (p.y > h) p.y = 0
       }
 
-      for (const t of trail) {
-        if (t.life <= 0) continue
-        ctx.globalAlpha = t.life * 0.45
-        ctx.fillStyle = isDark() ? "#c8b8e8" : "#7a6a9a"
-        ctx.beginPath()
-        ctx.arc(t.x, t.y, 0.8 + t.life * 2.2, 0, Math.PI * 2)
-        ctx.fill()
-      }
-
       for (const f of flashes) {
         if (f.life <= 0) continue
         ctx.globalAlpha = f.life * 0.6
@@ -324,6 +330,16 @@ BackgroundParticles.afterDOMLoaded = `
       ctx.arc(specialParticle.x, specialParticle.y, specialParticle.r / 2, 0, Math.PI * 2)
       ctx.fill()
       ctx.restore()
+
+      // шлейф — последним слоем: иначе glow частиц перекрывает точки у самого курсора
+      for (const t of trail) {
+        if (t.life <= 0) continue
+        ctx.globalAlpha = t.life * 0.5
+        ctx.fillStyle = isDark() ? "#d8c8f0" : "#6a5a8a"
+        ctx.beginPath()
+        ctx.arc(t.x, t.y, 0.9 + t.life * 2.4, 0, Math.PI * 2)
+        ctx.fill()
+      }
 
       ctx.globalAlpha = 1
       rafId = requestAnimationFrame(draw)
