@@ -161,7 +161,10 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
       })),
   }
 
-  const width = graph.offsetWidth
+  // PATCH (normcontrol-kb): the height already falls back to 250px, the width did not — a
+  // container that has no layout yet (hidden / still measuring) produced a 0px wide canvas,
+  // which renders nothing and cannot be clicked or dragged.
+  const width = Math.max(graph.offsetWidth, 250)
   const height = Math.max(graph.offsetHeight, 250)
 
   // we virtualize the simulation and use pixi to actually render it

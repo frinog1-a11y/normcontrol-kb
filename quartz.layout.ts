@@ -73,5 +73,12 @@ export const defaultListPageLayout: PageLayout = {
     }),
     Component.Explorer(),
   ],
-  right: [],
+  right: [
+    // граф связей показываем и на страницах-списках (папки и теги): у такой страницы
+    // собственного узла в contentIndex может не быть, поэтому здесь рисуем весь граф базы
+    Component.Graph({
+      localGraph: { depth: -1, showTags: true, removeTags: [] },
+      globalGraph: { showTags: true, removeTags: [] },
+    }),
+  ],
 }
