@@ -198,6 +198,179 @@ export function playSupernova() {
   noise.stop(ctx.currentTime + 0.52)
 }
 
+// PATCH (normcontrol-kb): цепочка звуков перетаскивания узла графа — захват → натяжение → отпускание → возврат
+
+/** 7. GRAB — взяли узел: короткий высокий «клик-вверх» (900 → 1200 Гц, 0.08 с). */
+export function playGrab() {
+  if (!enabled) return
+  const ctx = ensureAudioContext()
+  if (!ctx) return
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = "sine"
+  osc.frequency.setValueAtTime(900, ctx.currentTime)
+  osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.06)
+  gain.gain.setValueAtTime(0, ctx.currentTime)
+  gain.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 0.005)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.start()
+  osc.stop(ctx.currentTime + 0.1)
+}
+
+/**
+ * 8. STRETCH — непрерывный низкий гул натяжения: 120 Гц, растёт до 300 Гц,
+ * с лёгкой вибрацией (LFO 8 Гц) — «струна дрожит». Играет, пока тянешь узел.
+ */
+let stretchOsc: OscillatorNode | null = null
+let stretchGain: GainNode | null = null
+let stretchLfo: OscillatorNode | null = null
+let stretchLfoGain: GainNode | null = null
+
+export function startStretch() {
+  if (!enabled) return
+  const ctx = ensureAudioContext()
+  if (!ctx) return
+  if (stretchOsc) return
+  stretchOsc = ctx.createOscillator()
+  stretchGain = ctx.createGain()
+  stretchLfo = ctx.createOscillator()
+  stretchLfoGain = ctx.createGain()
+  stretchOsc.type = "sine"
+  stretchOsc.frequency.value = 120
+  stretchLfo.type = "sine"
+  stretchLfo.frequency.value = 8
+  stretchLfoGain.gain.value = 15
+  stretchLfo.connect(stretchLfoGain)
+  stretchLfoGain.connect(stretchOsc.frequency)
+  stretchGain.gain.setValueAtTime(0, ctx.currentTime)
+  stretchGain.gain.linearRampToValueAtTime(0.025, ctx.currentTime + 0.3)
+  stretchOsc.connect(stretchGain)
+  stretchGain.connect(ctx.destination)
+  stretchOsc.start()
+  stretchLfo.start()
+}
+
+/** Натяжение 0–1: частота 120–300 Гц и громкость 0.025–0.045. */
+export function updateStretch(tension: number) {
+  if (!stretchOsc || !stretchGain || !audioCtx) return
+  const t = Math.max(0, Math.min(1, tension || 0))
+  const freq = 120 + t * 180
+  const vol = 0.025 + t * 0.02
+  const now = audioCtx.currentTime
+  stretchOsc.frequency.linearRampToValueAtTime(freq, now + 0.1)
+  stretchGain.gain.linearRampToValueAtTime(vol, now + 0.1)
+}
+
+export function stopStretch() {
+  if (!stretchOsc || !stretchGain || !stretchLfo || !audioCtx) return
+  stretchGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1)
+  const osc = stretchOsc
+  const lfo = stretchLfo
+  const gain = stretchGain
+  const lfoGain = stretchLfoGain
+  stretchOsc = null
+  stretchGain = null
+  stretchLfo = null
+  stretchLfoGain = null
+  setTimeout(() => {
+    try {
+      osc.stop()
+      lfo.stop()
+      osc.disconnect()
+      lfo.disconnect()
+      gain.disconnect()
+      lfoGain?.disconnect()
+    } catch (e) {}
+  }, 150)
+}
+
+/** 9. RELEASE — отпустили узел: восходящий sweep 300…2000 Гц («пиу!»), длительность и громкость зависят от натяжения. */
+export function playRelease(tension = 0.5) {
+  if (!enabled) return
+  const ctx = ensureAudioContext()
+  if (!ctx) return
+  const t = Math.max(0, Math.min(1, tension))
+  const volume = 0.04 + t * 0.04
+  const freqStart = 300 + t * 200
+  const freqEnd = 1400 + t * 600
+  const duration = 0.15 + t * 0.1
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = "sine"
+  osc.frequency.setValueAtTime(freqStart, ctx.currentTime)
+  osc.frequency.exponentialRampToValueAtTime(freqEnd, ctx.currentTime + duration)
+  gain.gain.setValueAtTime(0, ctx.currentTime)
+  gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.01)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration + 0.05)
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.start()
+  osc.stop(ctx.currentTime + duration + 0.1)
+}
+
+/** 10. LAND — узел вернулся: падающий sweep + sub-bass thud + эхо («фью-у-уп… бум… эхо»). */
+export function playLand(tension = 0.5) {
+  if (!enabled) return
+  const ctx = ensureAudioContext()
+  if (!ctx) return
+  const t = Math.max(0, Math.min(1, tension))
+  const volume = 0.05 + t * 0.05
+  const freqStart = 1500 + t * 500
+  const freqEnd = 400 + t * 200
+  const duration = 0.25 + t * 0.2
+  const now = ctx.currentTime
+
+  // основной sweep вниз
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = "sine"
+  osc.frequency.setValueAtTime(freqStart, now)
+  osc.frequency.exponentialRampToValueAtTime(freqEnd, now + duration)
+  gain.gain.setValueAtTime(0, now)
+  gain.gain.linearRampToValueAtTime(volume, now + 0.01)
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration)
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.start()
+  osc.stop(now + duration + 0.1)
+
+  // sub-bass thud
+  const subOsc = ctx.createOscillator()
+  const subGain = ctx.createGain()
+  subOsc.type = "sine"
+  subOsc.frequency.setValueAtTime(150, now)
+  subOsc.frequency.exponentialRampToValueAtTime(60, now + 0.15)
+  subGain.gain.setValueAtTime(0, now)
+  subGain.gain.linearRampToValueAtTime(volume * 0.6, now + 0.02)
+  subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2)
+  subOsc.connect(subGain)
+  subGain.connect(ctx.destination)
+  subOsc.start()
+  subOsc.stop(now + 0.25)
+
+  // эхо с задержкой 0.12 с
+  const echoDelay = ctx.createDelay()
+  echoDelay.delayTime.value = 0.12
+  const echoGain = ctx.createGain()
+  echoGain.gain.value = 0.35
+  const echoOsc = ctx.createOscillator()
+  const echoGain2 = ctx.createGain()
+  echoOsc.type = "sine"
+  echoOsc.frequency.setValueAtTime(freqStart * 0.7, now + 0.12)
+  echoOsc.frequency.exponentialRampToValueAtTime(freqEnd, now + 0.12 + duration * 0.5)
+  echoGain2.gain.setValueAtTime(0, now + 0.12)
+  echoGain2.gain.linearRampToValueAtTime(volume * 0.3, now + 0.13)
+  echoGain2.gain.exponentialRampToValueAtTime(0.001, now + 0.12 + duration * 0.6)
+  echoOsc.connect(echoGain2)
+  echoGain2.connect(echoDelay)
+  echoDelay.connect(echoGain)
+  echoGain.connect(ctx.destination)
+  echoOsc.start(now + 0.12)
+  echoOsc.stop(now + 0.12 + duration * 0.7)
+}
+
 // --- связка с интерфейсом: кнопка, клики по фону, переходы между страницами ---
 let navCount = 0
 
@@ -211,11 +384,11 @@ function bindSoundEvents() {
   window.addEventListener("sound-disabled", () => {
     enabled = false
     stopDrone()
+    // PATCH (normcontrol-kb): если звук выключили прямо во время перетаскивания — глушим гул натяжения
+    stopStretch()
   })
-  // клик по фону (скрипт частиц рассылает это событие) — кристаллический звон
-  window.addEventListener("particle-click", () => {
-    playCrystalChime()
-  })
+  // клик по фону больше не озвучивается: работает только визуально (рябь + вспышка).
+  // playCrystalChime остаётся для подтверждения включения звука кнопкой 🔇/🔊.
   // переход между страницами — warp, но не на первой загрузке
   document.addEventListener("nav", () => {
     initSoundState()

@@ -447,8 +447,7 @@ BackgroundParticles.afterDOMLoaded = `
         bgClickCount++
         saveProgress()
         applyProgress(true)
-        // звук (модуль sound.ts) — кристаллический звон по клику по фону
-        window.dispatchEvent(new CustomEvent("particle-click"))
+        // клик по фону — только визуально (рябь + вспышка), без звука
         // на песочнице клик по фону добавляет звезду
         if (isPlayground) particles.push(makeStar(x, y))
       }

@@ -20,7 +20,17 @@ import { registerEscapeHandler, removeAllChildren } from "./util"
 import { FullSlug, SimpleSlug, getFullSlug, resolveRelative, simplifySlug } from "../../util/path"
 import { D3Config } from "../Graph"
 // PATCH (normcontrol-kb): космические звуки (Web Audio API) — тихие, только при включённом звуке
-import { playPulsar, playShimmer, playSupernova } from "./sound"
+// цепочка перетаскивания узла: grab → stretch → release → land
+import {
+  playPulsar,
+  playSupernova,
+  playGrab,
+  startStretch,
+  updateStretch,
+  stopStretch,
+  playRelease,
+  playLand,
+} from "./sound"
 
 type GraphicsInfo = {
   color: string
@@ -548,6 +558,53 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
   }
 
   let currentTransform = zoomIdentity
+
+  // PATCH (normcontrol-kb): состояние звуковой цепочки перетаскивания узла (grab → stretch → release → land)
+  let dragStartX = 0
+  let dragStartY = 0
+  let dragTension = 0
+  let landWatcher: (() => void) | null = null
+
+  function stopLandWatcher() {
+    if (!landWatcher) return
+    landWatcher()
+    landWatcher = null
+  }
+
+  /**
+   * Звук 4 «приземление»: играет только когда узел реально вернулся к точке захвата.
+   * Способ A — проверка в tick симуляции d3-force; способ B — страховочный таймер (если узел
+   * успокоился в другом месте или симуляция уже остановилась).
+   */
+  function watchLanding(node: NodeData, tension: number) {
+    stopLandWatcher()
+    const startX = dragStartX
+    const startY = dragStartY
+    let played = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const finish = () => {
+      if (played) return
+      played = true
+      stopLandWatcher()
+      playLand(tension)
+    }
+
+    const onTick = () => {
+      const dx = (node.x ?? 0) - startX
+      const dy = (node.y ?? 0) - startY
+      if (Math.sqrt(dx * dx + dy * dy) < 5) finish()
+    }
+
+    simulation.on("tick.landCheck", onTick)
+    timer = setTimeout(finish, 900 + tension * 500)
+    landWatcher = () => {
+      simulation.on("tick.landCheck", null)
+      if (timer) clearTimeout(timer)
+      timer = null
+    }
+  }
+
   if (enableDrag) {
     select<HTMLCanvasElement, NodeData | undefined>(app.canvas).call(
       drag<HTMLCanvasElement, NodeData | undefined>()
@@ -555,8 +612,13 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
         .subject(() => graphData.nodes.find((n) => n.id === hoveredNodeId))
         .on("start", function dragstarted(event) {
           if (!event.active) simulation.alphaTarget(1).restart()
-          // PATCH (normcontrol-kb): shimmer при начале перетаскивания
-          playShimmer()
+          // PATCH (normcontrol-kb): звук 1 «захват» + запуск непрерывного «натяжения»
+          dragStartX = event.subject.x ?? 0
+          dragStartY = event.subject.y ?? 0
+          dragTension = 0
+          stopLandWatcher()
+          playGrab()
+          startStretch()
           event.subject.fx = event.subject.x
           event.subject.fy = event.subject.y
           event.subject.__initialDragPos = {
@@ -572,17 +634,28 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
           const initPos = event.subject.__initialDragPos
           event.subject.fx = initPos.x + (event.x - initPos.x) / currentTransform.k
           event.subject.fy = initPos.y + (event.y - initPos.y) / currentTransform.k
+          // PATCH (normcontrol-kb): звук 2 — натяжение: 0…1 на дистанции 200 px, гул растёт
+          const dx = (event.subject.fx ?? 0) - dragStartX
+          const dy = (event.subject.fy ?? 0) - dragStartY
+          dragTension = Math.min(1, Math.sqrt(dx * dx + dy * dy) / 200)
+          updateStretch(dragTension)
         })
         .on("end", function dragended(event) {
           if (!event.active) simulation.alphaTarget(0)
+          // PATCH (normcontrol-kb): звук 3 «выстрел» при отпускании + звук 4 «приземление» после возврата узла
+          const tension = dragTension
+          const subject = event.subject as NodeData
           event.subject.fx = null
           event.subject.fy = null
           dragging = false
-          // PATCH (normcontrol-kb): pulsar при отпускании узла
-          playPulsar()
+          stopStretch()
+          playRelease(tension)
+          watchLanding(subject, tension)
 
           // if the time between mousedown and mouseup is short, we consider it a click
           if (Date.now() - dragStartTime < 500) {
+            // PATCH (normcontrol-kb): чистый клик — узел никуда не тянули, «приземление» не играем
+            if (tension < 0.05) stopLandWatcher()
             const node = graphData.nodes.find((n) => n.id === event.subject.id) as NodeData
             navigateToNode(node)
           }
@@ -762,6 +835,9 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
   requestAnimationFrame(animate)
   return () => {
     stopAnimation = true
+    // PATCH (normcontrol-kb): снимаем наблюдатель «приземления» и глушим гул, если граф уничтожают во время drag
+    stopLandWatcher()
+    stopStretch()
     document.removeEventListener("prenav", handlePreNav)
     window.removeEventListener("beforeunload", handlePreNav)
     app.destroy()
