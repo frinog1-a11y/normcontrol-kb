@@ -600,36 +600,46 @@ th {
 #sound-toggle {
   position: fixed;
   top: 1rem;
-  right: 4rem;
-  width: 40px;
-  height: 40px;
+  right: 1rem;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
-  background: rgba(242, 238, 248, 0.8);
-  border: 1px solid #e0d8ec;
-  font-size: 1.2rem;
+  background: #8a7ab8;
+  color: #f2eef8;
+  border: 1px solid #6a5a8a;
+  font-size: 1.25rem;
+  line-height: 1;
   cursor: pointer;
-  z-index: 50;
-  transition: all 0.2s ease;
+  z-index: 60;
+  box-shadow: 0 4px 12px rgba(138, 122, 184, 0.35);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
   backdrop-filter: blur(4px);
 }
 
 #sound-toggle:hover {
-  background: #8a7ab8;
-  transform: scale(1.05);
+  background: #b86a8a;
+  transform: scale(1.08);
 }
 
 [saved-theme="dark"] #sound-toggle {
-  background: rgba(26, 22, 38, 0.8);
-  border-color: #2a2440;
+  background: #b8a8d8;
+  color: #1a1626;
+  border-color: #d89ab8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 @media (max-width: 768px) {
   #sound-toggle {
-    top: 0.6rem;
-    right: 3.2rem;
-    width: 36px;
-    height: 36px;
-    font-size: 1rem;
+    top: 0.8rem;
+    right: 0.8rem;
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
   }
 }
 
